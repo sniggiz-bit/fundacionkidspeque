@@ -10,7 +10,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Key, Globe, Bell, Shield, CheckCircle2, AlertCircle,
-  Save, Loader2, RefreshCw, FileText, Share2, CreditCard, Image as ImageIcon, Mail, Eye, EyeOff
+  Save, Loader2, RefreshCw, FileText, Share2, CreditCard, Image as ImageIcon, Mail, Eye, EyeOff, ShoppingBag
 } from "lucide-react";
 
 interface EnvVar {
