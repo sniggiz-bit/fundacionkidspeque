@@ -12,6 +12,7 @@ import { z }        from "zod";
 import { db }       from "@/lib/db";
 import { cookies }  from "next/headers";
 import { jwtVerify } from "jose";
+import { revalidatePath } from "next/cache";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.ADMIN_JWT_SECRET ?? "fallback-dev-secret-change-in-production"
@@ -117,6 +118,9 @@ export async function PUT(request: NextRequest) {
       create: { id: "global", ...parsed.data },
       update: parsed.data,
     });
+
+    // Invalidad la caché del sitio público inmediatamente (revalida el layout global)
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ success: true, data: settings });
   } catch (err) {

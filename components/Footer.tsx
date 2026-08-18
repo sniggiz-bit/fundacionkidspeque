@@ -2,11 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Heart, Instagram, Facebook, Youtube, Mail, Phone, MapPin, Clock } from "lucide-react";
 import { db } from "@/lib/db";
+import { unstable_noStore as noStore } from "next/cache";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 export async function Footer() {
-  // Cargar la configuración dinámica guardada desde el panel admin
+  // Desactivar caché estática para que el footer siempre lea los datos actualizados de la DB
+  noStore();
+
   let settings = null;
   try {
     settings = await db.siteSettings.findUnique({ where: { id: "global" } });
