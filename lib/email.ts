@@ -5,6 +5,7 @@
  */
 
 import { Resend } from "resend";
+import { db } from "@/lib/db";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM   = process.env.EMAIL_FROM ?? "Fundación Kidspeque <notificaciones@kidspeque.cl>";
