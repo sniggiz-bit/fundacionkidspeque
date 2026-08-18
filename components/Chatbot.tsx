@@ -15,7 +15,6 @@ import {
   ArrowUpRight
 } from "lucide-react";
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
 interface Message {
   id: string;
   sender: "bot" | "user";
@@ -23,7 +22,6 @@ interface Message {
   timestamp: Date;
 }
 
-// ── Preguntas rápidas ────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   { text: "✨ ¿Cómo donar?", icon: Heart, intent: "donar" },
   { text: "📝 Registrar un sueño", icon: Sparkles, intent: "registrar" },
@@ -39,26 +37,58 @@ export function Chatbot() {
   const [isTyping, setIsTyping] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Configuración dinámica desde API
+  const [botConfig, setBotConfig] = useState({
+    enabled: true,
+    welcomeMessage: "¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.",
+    whatsappPhone: "56911223344",
+    contactEmail: "contacto@kidspeque.cl",
+    contactPhone: "+56 2 2345 6789",
+    rut: "76.XXX.XXX-X",
+    legalPersonId: "Nº XXXX/2024",
+    schedule: "Lunes a Viernes 09:00 a 17:00 hrs.",
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Inicializar mensaje de bienvenida al montar el cliente
+  // Cargar configuración dinámica
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && json?.data) {
+          const d = json.data;
+          setBotConfig({
+            enabled: d.chatbotEnabled ?? true,
+            welcomeMessage: d.chatbotWelcomeMessage || "¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy?",
+            whatsappPhone: d.whatsappPhone || "56911223344",
+            contactEmail: d.contactEmail || "contacto@kidspeque.cl",
+            contactPhone: d.contactPhone || "+56 2 2345 6789",
+            rut: d.rut || "76.XXX.XXX-X",
+            legalPersonId: d.legalPersonId || "Nº XXXX/2024",
+            schedule: d.schedule || "Lunes a Viernes 09:00 a 17:00 hrs.",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Inicializar mensaje de bienvenida
   useEffect(() => {
     setMessages([
       {
         id: "welcome",
         sender: "bot",
-        text: "¡Hola! 🌟 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.",
+        text: botConfig.welcomeMessage,
         timestamp: new Date(),
       },
     ]);
-  }, []);
+  }, [botConfig.welcomeMessage]);
 
-  // Auto-scroll al final cuando hay nuevos mensajes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Mostrar una notificación de saludo inicial si no está abierto
   useEffect(() => {
     if (!isOpen && messages.length === 1) {
       const timer = setTimeout(() => {
@@ -68,105 +98,77 @@ export function Chatbot() {
     }
   }, [isOpen, messages]);
 
-  // ── Lógica de Respuestas Inteligentes (Clasificador Local) ───────────────────
+  // Si el chatbot está desactivado desde el admin, no renderizar nada
+  if (!botConfig.enabled) {
+    return null;
+  }
+
+  // ── Respuestas inteligentes dinámicas ───────────────────────────────────────
   const getBotResponse = (input: string): string => {
     const text = input
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, ""); // quitar tildes
+      .replace(/[\u0300-\u036f]/g, "");
 
     // Intención: Donar
     if (
-      text.includes("dona") ||
-      text.includes("dono") ||
-      text.includes("dinero") ||
-      text.includes("aportar") ||
-      text.includes("pago") ||
-      text.includes("pagar") ||
-      text.includes("webpay") ||
-      text.includes("flow") ||
-      text.includes("paypal") ||
-      text.includes("clp") ||
-      text.includes("peso") ||
-      text.includes("monto")
+      text.includes("dona") || text.includes("dono") || text.includes("dinero") ||
+      text.includes("aportar") || text.includes("pago") || text.includes("pagar") ||
+      text.includes("webpay") || text.includes("flow") || text.includes("paypal") ||
+      text.includes("clp") || text.includes("peso") || text.includes("monto")
     ) {
       return "En Fundación Kidspeque puedes cumplir sueños reales donando desde $1.000 CLP. El proceso es 100% seguro mediante Webpay, Flow o PayPal. Ve a la sección 'Dona en segundos' en nuestra página de inicio para aportar. Además, tu aporte es deducible de impuestos bajo el Art. 69 de la Ley sobre Impuesto a la Renta. 💙";
     }
 
     // Intención: Registrar Sueños
     if (
-      text.includes("sueno") ||
-      text.includes("registrar") ||
-      text.includes("propon") ||
-      text.includes("subir") ||
-      text.includes("postular") ||
-      text.includes("nino") ||
-      text.includes("nina") ||
-      text.includes("historia")
+      text.includes("sueno") || text.includes("registrar") || text.includes("propon") ||
+      text.includes("subir") || text.includes("postular") || text.includes("nino") ||
+      text.includes("nina") || text.includes("historia")
     ) {
-      return "¡Qué hermoso que quieras postular el sueño de un niño/a! 👶 Puedes hacerlo directamente completando el formulario público en la pestaña superior 'Registrar Sueño' o visitando: /suenos/registrar. Cada propuesta es evaluada por nuestro equipo de moderación antes de ser activada para recibir aportes.";
+      return "¡Qué hermoso que quieras postular el sueño de un niño/a! 👶 Puedes hacerlo directamente completando el formulario público en la pestaña superior 'Registrar Sueño' o visitando /suenos/registrar. Cada propuesta es evaluada por nuestro equipo antes de ser activada.";
     }
 
     // Intención: Tienda Solidaria
     if (
-      text.includes("tienda") ||
-      text.includes("ropa") ||
-      text.includes("delantal") ||
-      text.includes("compra") ||
-      text.includes("comprar") ||
-      text.includes("vestido") ||
-      text.includes("pantalon") ||
-      text.includes("producto")
+      text.includes("tienda") || text.includes("ropa") || text.includes("delantal") ||
+      text.includes("compra") || text.includes("comprar") || text.includes("vestido") ||
+      text.includes("pantalon") || text.includes("producto")
     ) {
-      return "En nuestra Tienda Solidaria vendemos prendas premium y accesorios para niños, como vestidos de algodón orgánico GOTS y delantales antimanchas. Lo más importante: ¡el 100% de la utilidad va directamente a financiar los sueños de los niños! Puedes ver el catálogo en la sección 'Tienda' de la página principal o en: /tienda. 🛍️";
+      return "En nuestra Tienda Solidaria vendemos prendas y accesorios para niños. ¡El 100% de la utilidad va directamente a financiar los sueños de los niños! Puedes ver el catálogo en la sección 'Tienda' o en /tienda. 🛍️";
     }
 
     // Intención: Voluntariado
     if (
-      text.includes("voluntario") ||
-      text.includes("voluntariado") ||
-      text.includes("beca") ||
-      text.includes("ayudar") ||
-      text.includes("colaborar") ||
-      text.includes("unirse") ||
-      text.includes("tiempo") ||
-      text.includes("red")
+      text.includes("voluntario") || text.includes("voluntariado") || text.includes("beca") ||
+      text.includes("ayudar") || text.includes("colaborar") || text.includes("unirse") ||
+      text.includes("tiempo") || text.includes("red")
     ) {
-      return "¡Buscamos corazones dispuestos a ayudar! 🙋 Aceptamos profesionales (psicólogos, trabajadores sociales), artistas (talleristas creativos) y voluntarios en general que deseen regalar su tiempo y talento. Puedes ver los detalles en la sección 'Colabora' en la Home o inscribirte en: /voluntariado.";
+      return "¡Buscamos corazones dispuestos a ayudar! 🙋 Aceptamos profesionales (psicólogos, trabajadores sociales), artistas y voluntarios en general. Puedes inscribirte en la sección /voluntariado.";
     }
 
     // Intención: Contacto
     if (
-      text.includes("contacto") ||
-      text.includes("correo") ||
-      text.includes("email") ||
-      text.includes("telefono") ||
-      text.includes("celular") ||
-      text.includes("direccion") ||
+      text.includes("contacto") || text.includes("correo") || text.includes("email") ||
+      text.includes("telefono") || text.includes("celular") || text.includes("direccion") ||
       text.includes("oficina")
     ) {
-      return "Nos puedes escribir a contacto@kidspeque.cl o llamarnos al +56 2 2345 6789. Nuestro horario de atención al cliente es de Lunes a Viernes de 09:00 a 17:00 hrs. ¡Estaremos encantados de conversar contigo! 📞";
+      return `Nos puedes escribir a ${botConfig.contactEmail} o llamarnos al ${botConfig.contactPhone}. Nuestro horario de atención es: ${botConfig.schedule}. ¡Estaremos encantados de conversar contigo! 📞`;
     }
 
     // Intención: Transparencia / Legal
     if (
-      text.includes("transparencia") ||
-      text.includes("rut") ||
-      text.includes("personalidad") ||
-      text.includes("juridica") ||
-      text.includes("seguro") ||
-      text.includes("confianza") ||
-      text.includes("legal") ||
-      text.includes("impuesto")
+      text.includes("transparencia") || text.includes("rut") || text.includes("personalidad") ||
+      text.includes("juridica") || text.includes("seguro") || text.includes("confianza") ||
+      text.includes("legal") || text.includes("impuesto")
     ) {
-      return "Fundación Kidspeque (Fundación Social Niños Creativos) cuenta con Personalidad Jurídica N° XXXX/2024. Somos una organización regulada y comprometida con el 100% de transparencia. Todas las donaciones a campañas generan un recibo de donación inmediato y son deducibles de impuestos bajo el Art. 69 LIR. Puedes revisar la información legal completa al pie de nuestra web. 🔒";
+      return `Fundación Kidspeque cuenta con RUT ${botConfig.rut} y Personalidad Jurídica ${botConfig.legalPersonId}. Somos una organización comprometida con el 100% de transparencia. Puedes revisar todos nuestros balances e informes en /transparencia. 🔒`;
     }
 
     // Fallback
-    return "Entiendo tu consulta. Sin embargo, para brindarte una atención más detallada y resolver tu duda de forma personalizada, puedes derivar esta consulta a un coordinador real a través de WhatsApp presionando el botón de abajo.👇";
+    return "Entiendo tu consulta. Para brindarte una atención más detallada y resolver tu duda de forma personalizada, puedes conversar directamente con un coordinador haciendo clic en el botón verde de WhatsApp abajo. 👇";
   };
 
-  // ── Enviar Mensaje ──────────────────────────────────────────────────────────
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
 
@@ -181,7 +183,6 @@ export function Chatbot() {
     setInputValue("");
     setIsTyping(true);
 
-    // Simular escritura natural (1.2 segundos de delay)
     setTimeout(() => {
       const replyText = getBotResponse(text);
       const botMsg: Message = {
@@ -192,25 +193,22 @@ export function Chatbot() {
       };
       setMessages((prev) => [...prev, botMsg]);
       setIsTyping(false);
-    }, 1200);
+    }, 1000);
   };
 
-  // ── Exportar chat a WhatsApp ───────────────────────────────────────────────
   const handleExportToWhatsApp = () => {
-    // Formatear la conversación
-    let chatHistoryText = "¡Hola Fundación Kidspeque! Estaba chateando con su asistente virtual y me gustaría continuar la conversación con un coordinador humano.\n\n";
+    let chatHistoryText = "¡Hola Fundación Kidspeque! Estaba en el sitio web y quisiera conversar con un coordinador humano.\n\n";
     chatHistoryText += "📝 *Historial del chat:*\n";
 
-    // Mapear los últimos 8 mensajes para no saturar el texto del URL
-    const recentMessages = messages.slice(-8);
+    const recentMessages = messages.slice(-6);
     recentMessages.forEach((msg) => {
-      const senderName = msg.sender === "bot" ? "🤖 Asistente" : "👤 Yo";
+      const senderName = msg.sender === "bot" ? "🤖 Bot" : "👤 Usuario";
       chatHistoryText += `${senderName}: ${msg.text}\n`;
     });
 
     const encodedText = encodeURIComponent(chatHistoryText);
-    const phoneNumber = "56223456789"; // Número por defecto (+56 2 2345 6789)
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedText}`;
+    const cleanPhone = botConfig.whatsappPhone.replace(/[^0-9]/g, "");
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
 
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
@@ -290,7 +288,6 @@ export function Chatbot() {
                     key={msg.id}
                     className={`flex items-start gap-2.5 ${!isBot ? "flex-row-reverse" : ""}`}
                   >
-                    {/* Avatar */}
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-semibold select-none flex-shrink-0 ${
                         isBot ? "bg-violet-100 text-violet-700" : "bg-orange-100 text-orange-700"
@@ -299,7 +296,6 @@ export function Chatbot() {
                       {isBot ? "🤖" : "👤"}
                     </div>
 
-                    {/* Burbuja de Texto */}
                     <div className="max-w-[75%] space-y-1">
                       <div
                         className={`p-3 rounded-2xl text-xs leading-relaxed ${
@@ -318,7 +314,6 @@ export function Chatbot() {
                 );
               })}
 
-              {/* Animación "Escribiendo..." */}
               {isTyping && (
                 <div className="flex items-start gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center text-xs flex-shrink-0">
@@ -357,20 +352,18 @@ export function Chatbot() {
               </div>
             )}
 
-            {/* Botón WhatsApp prioritario si ya hay conversación */}
-            {messages.length > 1 && (
-              <div className="px-4 py-2 border-t border-neutral-100 bg-neutral-50 flex items-center justify-between gap-2">
-                <span className="text-[10px] text-neutral-500 leading-tight">¿Prefieres ayuda humana directa?</span>
-                <button
-                  onClick={handleExportToWhatsApp}
-                  className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors"
-                >
-                  <PhoneCall size={11} />
-                  WhatsApp
-                  <ArrowUpRight size={11} />
-                </button>
-              </div>
-            )}
+            {/* Botón WhatsApp prioritario */}
+            <div className="px-4 py-2 border-t border-neutral-100 bg-neutral-50 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-neutral-500 leading-tight">¿Prefieres ayuda humana directa?</span>
+              <button
+                onClick={handleExportToWhatsApp}
+                className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors"
+              >
+                <PhoneCall size={11} />
+                WhatsApp
+                <ArrowUpRight size={11} />
+              </button>
+            </div>
 
             {/* Input y Botón Enviar */}
             <div className="p-3 border-t border-neutral-100 bg-white flex items-center gap-2">

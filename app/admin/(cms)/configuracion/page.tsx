@@ -69,6 +69,9 @@ export default async function AdminConfiguracionPage() {
           { id: "3", title: "Certificado de Personalidad Jurídica", type: "PDF", size: "0.5 MB", date: "Vigente", url: "" },
           { id: "4", title: "Estatutos de la Fundación", type: "PDF", size: "3.2 MB", date: "Actualizado 2024", url: "" },
         ],
+        chatbotEnabled:        settings.chatbotEnabled ?? true,
+        chatbotWelcomeMessage: settings.chatbotWelcomeMessage ?? "¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.",
+        whatsappPhone:         settings.whatsappPhone ?? "56911223344",
       }}
       envVars={envVars}
     />

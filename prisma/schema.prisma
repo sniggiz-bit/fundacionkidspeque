@@ -415,6 +415,11 @@ model SiteSettings {
   // Documentos de Transparencia (JSON)
   transparencyDocs Json? @map("transparency_docs")
 
+  // Chatbot & WhatsApp
+  chatbotEnabled        Boolean @default(true) @map("chatbot_enabled")
+  chatbotWelcomeMessage String? @default("¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.") @map("chatbot_welcome_message")
+  whatsappPhone         String? @default("56911223344") @map("whatsapp_phone")
+
   // Mantenimiento
   maintenanceMode Boolean @default(false) @map("maintenance_mode")
 

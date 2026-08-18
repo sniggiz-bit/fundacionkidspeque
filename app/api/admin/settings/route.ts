@@ -63,6 +63,11 @@ const settingsSchema = z.object({
     date:  z.string(),
     url:   z.string(),
   })).optional().nullable(),
+
+  // Chatbot & WhatsApp
+  chatbotEnabled:        z.boolean().optional(),
+  chatbotWelcomeMessage: z.string().max(500).optional().nullable(),
+  whatsappPhone:         z.string().max(30).optional().nullable(),
 });
 
 // ── GET ──────────────────────────────────────────────────────────────────────

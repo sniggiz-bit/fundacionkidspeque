@@ -58,6 +58,10 @@ interface Settings {
   cloudinaryApiSecret:   string;
 
   transparencyDocs:      TransparencyDocItem[];
+
+  chatbotEnabled:        boolean;
+  chatbotWelcomeMessage: string;
+  whatsappPhone:         string;
 }
 
 interface Props {
@@ -598,6 +602,55 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── Sección 8: Asistente Virtual (Chatbot & WhatsApp) ──────────────── */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center">
+                <Bell size={18} className="text-violet-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-white text-sm">Asistente Virtual (Chatbot & WhatsApp)</h2>
+                <p className="text-xs text-neutral-500">Personaliza el mensaje de saludo, teléfono de WhatsApp y activa/desactiva el widget.</p>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.chatbotEnabled}
+                onChange={(e) => update("chatbotEnabled", e.target.checked)}
+                className="w-4 h-4 accent-violet-600 rounded cursor-pointer"
+              />
+              <span className="text-xs text-neutral-300 font-medium">Activar Chatbot Widget</span>
+            </label>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Mensaje de bienvenida del Bot</label>
+              <textarea
+                rows={3}
+                value={form.chatbotWelcomeMessage}
+                onChange={(e) => update("chatbotWelcomeMessage", e.target.value)}
+                placeholder="¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque..."
+                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Número WhatsApp de atención (con código de país sin +)</label>
+              <input
+                type="text"
+                value={form.whatsappPhone}
+                onChange={(e) => update("whatsappPhone", e.target.value)}
+                placeholder="56911223344"
+                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+              />
+              <p className="text-[11px] text-neutral-500 mt-1">Ejemplo: 56911223344 (Chile). Al hacer clic en WhatsApp en el chat, derivará la conversación a este número.</p>
+            </div>
           </div>
         </div>
 
