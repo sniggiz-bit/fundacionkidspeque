@@ -1,0 +1,393 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  XUBOOK — Prisma Schema
+//  ORM sobre PostgreSQL — refleja 1:1 el schema.sql
+// ═══════════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+  binaryTargets   = ["native", "windows", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum DreamStatus {
+  draft
+  active
+  funded
+  completed
+  paused
+  cancelled
+
+  @@map("dream_status")
+}
+
+enum DonationStatus {
+  pending
+  confirmed
+  failed
+  refunded
+  disputed
+
+  @@map("donation_status")
+}
+
+enum PaymentGateway {
+  webpay_plus  // Transbank — tarjetas nacionales CLP
+  flow         // Flow.cl — múltiples medios nacionales CLP
+  paypal       // PayPal — donaciones internacionales USD
+
+  @@map("payment_gateway")
+}
+
+enum CurrencyCode {
+  CLP
+  USD
+  EUR
+
+  @@map("currency_code")
+}
+
+enum CollaboratorType {
+  psychologist
+  therapist
+  social_worker
+  artist
+  volunteer
+
+  @@map("collaborator_type")
+}
+
+enum CollaboratorStatus {
+  pending
+  active
+  inactive
+  rejected
+
+  @@map("collaborator_status")
+}
+
+enum ProductCategory {
+  ropa_organica
+  delantales
+  pantalones
+  accesorios
+  kits
+
+  @@map("product_category")
+}
+
+// ── MODELOS ──────────────────────────────────────────────────────────────────
+
+model Contributor {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  firstName  String  @map("first_name") @db.VarChar(100)
+  lastName   String  @map("last_name")  @db.VarChar(100)
+  email      String  @unique            @db.VarChar(255)
+  phone      String?                    @db.VarChar(20)
+
+  // RUT cifrado (Ley 19.628)
+  rutEncrypted String? @map("rut_encrypted")
+  rutHash      String? @map("rut_hash")     @db.VarChar(64)
+
+  // Dirección como JSON
+  address Json?
+
+  isAnonymous       Boolean  @default(false) @map("is_anonymous")
+  newsletterConsent Boolean  @default(false) @map("newsletter_consent")
+  consentDate       DateTime? @map("consent_date") @db.Timestamptz
+
+  // Métricas desnormalizadas (actualizadas por triggers de PG)
+  totalDonated  BigInt  @default(0) @map("total_donated")
+  donationCount Int     @default(0) @map("donation_count")
+
+  // Seguridad
+  emailVerified Boolean  @default(false) @map("email_verified")
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz
+  ipAddressHash String?  @map("ip_address_hash") @db.VarChar(64)
+
+  // Relaciones
+  donations Donation[]
+  orders    Order[]
+
+  @@index([email])
+  @@index([rutHash])
+  @@map("contributors")
+}
+
+model Dream {
+  id        String    @id @default(uuid()) @db.Uuid
+  publicId  String    @unique @map("public_id") @db.VarChar(20)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  publishedAt DateTime? @map("published_at") @db.Timestamptz
+
+  title            String  @db.VarChar(200)
+  childName        String  @map("child_name")        @db.VarChar(100)
+  childAge         Int     @map("child_age")          @db.SmallInt
+  story            String  @db.Text
+  shortDescription String  @map("short_description") @db.VarChar(160)
+
+  // Medios como JSON
+  coverImage Json  @map("cover_image")
+  gallery    Json?
+
+  // Financiero (CLP sin decimales → BigInt)
+  targetAmount      BigInt  @default(0)      @map("target_amount")
+  raisedAmount      BigInt  @default(0)      @map("raised_amount")
+  donorCount        Int     @default(0)      @map("donor_count")
+  progressPct       Decimal @default(0)      @map("progress_pct") @db.Decimal(5, 2)
+
+  status      DreamStatus @default(draft)
+  deadline    DateTime?   @db.Timestamptz
+  completedAt DateTime?   @map("completed_at") @db.Timestamptz
+
+  // SEO
+  slug            String  @unique @db.VarChar(250)
+  metaTitle       String? @map("meta_title")       @db.VarChar(60)
+  metaDescription String? @map("meta_description") @db.VarChar(160)
+
+  category String?
+  tags     String[] @default([])
+
+  // Relaciones
+  donations Donation[]
+  products  Product[]
+
+  @@index([status])
+  @@index([slug])
+  @@index([publishedAt(sort: Desc)])
+  @@map("dreams")
+}
+
+model Donation {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relaciones
+  contributorId String      @map("contributor_id") @db.Uuid
+  contributor   Contributor @relation(fields: [contributorId], references: [id])
+  dreamId       String      @map("dream_id") @db.Uuid
+  dream         Dream       @relation(fields: [dreamId], references: [id])
+
+  // Monto
+  amount       BigInt       @db.BigInt
+  currency     CurrencyCode @default(CLP)
+  amountInCLP  BigInt       @map("amount_in_clp") @db.BigInt
+  exchangeRate Decimal?     @map("exchange_rate") @db.Decimal(10, 6)
+
+  // Pago
+  gateway               PaymentGateway
+  gatewayTransactionId  String         @map("gateway_transaction_id") @db.VarChar(200)
+  gatewayOrderId        String?        @map("gateway_order_id")       @db.VarChar(200)
+  status                DonationStatus @default(pending)
+
+  // Recibo
+  receiptNumber String? @unique @map("receipt_number") @db.VarChar(50)
+  receiptUrl    String? @map("receipt_url")
+  taxDeductible Boolean @default(true) @map("tax_deductible")
+
+  // Visibilidad
+  message     String? @db.VarChar(500)
+  isPublic    Boolean @default(true)  @map("is_public")
+  displayName String? @map("display_name") @db.VarChar(100)
+
+  // Metadata
+  paymentMethod  String? @map("payment_method") @db.VarChar(100)
+  installments   Int?    @default(1)
+  ipAddressHash  String? @map("ip_address_hash")  @db.VarChar(64)
+  userAgentHash  String? @map("user_agent_hash")   @db.VarChar(64)
+
+  // Webhook
+  webhookReceivedAt DateTime? @map("webhook_received_at") @db.Timestamptz
+  webhookPayload    Json?     @map("webhook_payload")
+
+  @@unique([gateway, gatewayTransactionId])
+  @@index([contributorId])
+  @@index([dreamId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("donations")
+}
+
+model Product {
+  id          String    @id @default(uuid()) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  publishedAt DateTime? @map("published_at") @db.Timestamptz
+
+  name             String          @db.VarChar(200)
+  slug             String          @unique @db.VarChar(250)
+  description      String          @db.Text
+  shortDescription String          @map("short_description") @db.VarChar(120)
+  category         ProductCategory
+  tags             String[]        @default([])
+
+  price          Int  // CLP
+  compareAtPrice Int? @map("compare_at_price")
+  costPerItem    Int? @map("cost_per_item")
+
+  sku            String  @unique @db.VarChar(100)
+  stock          Int     @default(0)
+  trackInventory Boolean @default(true) @map("track_inventory")
+
+  images             Json
+  impactDescription  String  @map("impact_description") @db.Text
+  relatedDreamId     String? @map("related_dream_id") @db.Uuid
+  relatedDream       Dream?  @relation(fields: [relatedDreamId], references: [id])
+
+  metaTitle       String? @map("meta_title")       @db.VarChar(60)
+  metaDescription String? @map("meta_description") @db.VarChar(160)
+  isActive        Boolean @default(true)  @map("is_active")
+  isFeatured      Boolean @default(false) @map("is_featured")
+
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+
+  @@index([isActive, isFeatured])
+  @@index([category])
+  @@map("products")
+}
+
+model ProductVariant {
+  id         String  @id @default(uuid()) @db.Uuid
+  productId  String  @map("product_id") @db.Uuid
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name       String
+  sku        String  @unique @db.VarChar(100)
+  price      Int?
+  stock      Int     @default(0)
+  attributes Json
+
+  orderItems OrderItem[]
+
+  @@map("product_variants")
+}
+
+enum OrderStatus {
+  pending
+  paid
+  processing
+  shipped
+  delivered
+  cancelled
+  refunded
+
+  @@map("order_status")
+}
+
+model Order {
+  id        String      @id @default(uuid()) @db.Uuid
+  publicId  String      @unique @map("public_id") @db.VarChar(20)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  contributorId String      @map("contributor_id") @db.Uuid
+  contributor   Contributor @relation(fields: [contributorId], references: [id])
+
+  status        OrderStatus @default(pending)
+  subtotal      Int   // CLP
+  shippingCost  Int   @default(0) @map("shipping_cost")
+  total         Int
+
+  // Dirección de despacho
+  shippingAddress Json @map("shipping_address")
+
+  // Pago
+  gateway              String?  @db.VarChar(50)
+  gatewayTransactionId String?  @map("gateway_transaction_id") @db.VarChar(200)
+
+  items OrderItem[]
+
+  @@index([contributorId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  orderId     String  @map("order_id")     @db.Uuid
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String  @map("product_id")   @db.Uuid
+  product     Product @relation(fields: [productId], references: [id])
+  variantId   String? @map("variant_id")   @db.Uuid
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity    Int
+  unitPrice   Int     @map("unit_price")
+  totalPrice  Int     @map("total_price")
+
+  @@map("order_items")
+}
+
+model Collaborator {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  firstName String @map("first_name") @db.VarChar(100)
+  lastName  String @map("last_name")  @db.VarChar(100)
+  email     String @unique            @db.VarChar(255)
+  phone     String?                   @db.VarChar(20)
+
+  rutEncrypted String? @map("rut_encrypted")
+  rutHash      String? @map("rut_hash") @db.VarChar(64)
+
+  type            CollaboratorType
+  profession      String?          @db.VarChar(150)
+  specializations String[]         @default([])
+  bio             String?          @db.Text
+  linkedInUrl     String?          @map("linkedin_url")
+  portfolioUrl    String?          @map("portfolio_url")
+
+  availability Json?
+
+  isVerified             Boolean            @default(false) @map("is_verified")
+  backgroundCheckComplete Boolean           @default(false) @map("background_check_complete")
+  status                 CollaboratorStatus @default(pending)
+
+  skills    String[] @default([])
+  languages String[] @default(["es"])
+
+  emergencyContact Json? @map("emergency_contact")
+
+  @@index([type, status])
+  @@map("collaborators")
+}
+
+// ── CONFIGURACIÓN DEL SITIO ───────────────────────────────────────────────────
+
+/// Tabla de configuración del sitio. Usa un único registro con id="global".
+model SiteSettings {
+  id        String   @id @default("global")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Identidad de la fundación
+  foundationName String  @default("Fundación Kidspeque") @map("foundation_name") @db.VarChar(200)
+  tagline        String  @default("Cada niño merece soñar.") @db.VarChar(300)
+  contactEmail   String  @default("contacto@kidspeque.cl")  @map("contact_email")  @db.VarChar(255)
+  contactPhone   String? @map("contact_phone") @db.VarChar(30)
+
+  // Emails de notificación
+  donationsEmail   String @default("donaciones@kidspeque.cl")  @map("donations_email")   @db.VarChar(255)
+  volunteeringEmail String @default("voluntarios@kidspeque.cl") @map("volunteering_email") @db.VarChar(255)
+
+  // Redes sociales (JSON)
+  socialLinks Json? @map("social_links")
+
+  // Mantenimiento
+  maintenanceMode Boolean @default(false) @map("maintenance_mode")
+
+  @@map("site_settings")
+}
