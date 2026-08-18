@@ -2,14 +2,47 @@ import { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { FileText, Download, PieChart, ShieldCheck, Heart, Users } from "lucide-react";
-import Link from "next/link";
+import { db } from "@/lib/db";
+import { unstable_noStore as noStore } from "next/cache";
 
 export const metadata: Metadata = {
   title: "Transparencia | Fundación Kidspeque",
   description: "Conoce en detalle cómo administramos los fondos, nuestros reportes financieros y el impacto real de cada donación.",
 };
 
-export default function TransparenciaPage() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+interface TransparencyDoc {
+  id:    string;
+  title: string;
+  type:  string;
+  size:  string;
+  date:  string;
+  url:   string;
+}
+
+export default async function TransparenciaPage() {
+  noStore();
+
+  let settings = null;
+  try {
+    settings = await db.siteSettings.findUnique({ where: { id: "global" } });
+  } catch (err) {
+    console.error("[TransparenciaPage] Error al cargar DB:", err);
+  }
+
+  const defaultDocs: TransparencyDoc[] = [
+    { id: "1", title: "Memoria Anual 2024", type: "PDF", size: "2.4 MB", date: "Marzo 2025", url: "#" },
+    { id: "2", title: "Balance Financiero Auditado 2024", type: "PDF", size: "1.1 MB", date: "Febrero 2025", url: "#" },
+    { id: "3", title: "Certificado de Personalidad Jurídica", type: "PDF", size: "0.5 MB", date: "Vigente", url: "#" },
+    { id: "4", title: "Estatutos de la Fundación", type: "PDF", size: "3.2 MB", date: "Actualizado 2024", url: "#" },
+  ];
+
+  const docs: TransparencyDoc[] = (settings?.transparencyDocs as any) && Array.isArray(settings?.transparencyDocs) && (settings.transparencyDocs as any).length > 0
+    ? (settings.transparencyDocs as any)
+    : defaultDocs;
+
   return (
     <>
       <Navbar />
@@ -84,25 +117,36 @@ export default function TransparenciaPage() {
               </div>
 
               <div className="space-y-4">
-                {[
-                  { title: "Memoria Anual 2024", type: "PDF", size: "2.4 MB", date: "Marzo 2025" },
-                  { title: "Balance Financiero Auditado 2024", type: "PDF", size: "1.1 MB", date: "Febrero 2025" },
-                  { title: "Certificado de Personalidad Jurídica", type: "PDF", size: "0.5 MB", date: "Vigente" },
-                  { title: "Estatutos de la Fundación", type: "PDF", size: "3.2 MB", date: "Actualizado 2024" },
-                ].map((doc) => (
-                  <div key={doc.title} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-neutral-100 hover:border-primary-200 hover:bg-primary-50/30 transition-colors">
+                {docs.map((doc) => (
+                  <div key={doc.id || doc.title} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-neutral-100 hover:border-primary-200 hover:bg-primary-50/30 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg bg-neutral-100 text-neutral-500 flex items-center justify-center flex-shrink-0">
                         <FileText size={20} />
                       </div>
                       <div>
                         <h4 className="font-semibold text-neutral-900">{doc.title}</h4>
-                        <p className="text-xs text-neutral-500 mt-0.5">{doc.type} · {doc.size} · {doc.date}</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">{doc.type || "PDF"} · {doc.size || "1 MB"} · {doc.date || "Vigente"}</p>
                       </div>
                     </div>
-                    <button className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors">
-                      <Download size={16} /> Descargar
-                    </button>
+                    {doc.url && doc.url !== "#" ? (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors"
+                      >
+                        <Download size={16} /> Descargar
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-neutral-400 bg-neutral-100 rounded-xl cursor-not-allowed"
+                      >
+                        <Download size={16} /> Próximamente
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

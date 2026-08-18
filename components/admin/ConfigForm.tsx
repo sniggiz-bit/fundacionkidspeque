@@ -19,6 +19,15 @@ interface EnvVar {
   status: "ok" | "missing";
 }
 
+interface TransparencyDocItem {
+  id:    string;
+  title: string;
+  type:  string;
+  size:  string;
+  date:  string;
+  url:   string;
+}
+
 interface Settings {
   foundationName:        string;
   tagline:               string;
@@ -47,6 +56,8 @@ interface Settings {
   cloudinaryCloudName:   string;
   cloudinaryApiKey:      string;
   cloudinaryApiSecret:   string;
+
+  transparencyDocs:      TransparencyDocItem[];
 }
 
 interface Props {
@@ -62,7 +73,9 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
 
-  function update(key: keyof Settings, value: string) {
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+
+  function update(key: keyof Settings, value: any) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
     setError(null);
@@ -70,6 +83,47 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
 
   function toggleSecret(key: string) {
     setShowSecrets((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function updateDoc(id: string, key: keyof TransparencyDocItem, value: string) {
+    setForm((prev) => ({
+      ...prev,
+      transparencyDocs: (prev.transparencyDocs || []).map((doc) =>
+        doc.id === id ? { ...doc, [key]: value } : doc
+      ),
+    }));
+    setSaved(false);
+  }
+
+  function removeDoc(id: string) {
+    setForm((prev) => ({
+      ...prev,
+      transparencyDocs: (prev.transparencyDocs || []).filter((doc) => doc.id !== id),
+    }));
+    setSaved(false);
+  }
+
+  async function handleDocUpload(id: string, file: File) {
+    setUploadingDocId(id);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "transparency");
+
+    try {
+      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok && json.data?.url) {
+        updateDoc(id, "url", json.data.url);
+        const sizeMb = (json.data.bytes / (1024 * 1024)).toFixed(1) + " MB";
+        updateDoc(id, "size", sizeMb);
+      } else {
+        alert(json.error || "Error al subir archivo");
+      }
+    } catch {
+      alert("Error de conexión al subir archivo.");
+    } finally {
+      setUploadingDocId(null);
+    }
   }
 
   async function handleSave() {
@@ -437,7 +491,117 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
           </div>
         </div>
 
-        {/* ── Sección 7: Notificaciones Internas ────────────────────────────── */}
+        {/* ── Sección 7: Documentos de Transparencia ─────────────────────── */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-600/20 flex items-center justify-center">
+                <FileText size={18} className="text-purple-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-white text-sm">Documentos Oficiales de Transparencia</h2>
+                <p className="text-xs text-neutral-500">Administra los memorias, balances y certificados PDF visibles en /transparencia.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const newDoc: TransparencyDocItem = {
+                  id: Date.now().toString(),
+                  title: "Nuevo Documento Oficial",
+                  type: "PDF",
+                  size: "1.0 MB",
+                  date: "2025",
+                  url: "",
+                };
+                setForm((prev) => ({ ...prev, transparencyDocs: [...(prev.transparencyDocs || []), newDoc] }));
+              }}
+              className="px-3 py-1.5 bg-primary-600/20 hover:bg-primary-600/30 text-primary-300 text-xs font-semibold rounded-lg border border-primary-500/30 transition-all flex items-center gap-1.5"
+            >
+              + Agregar Documento
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {(form.transparencyDocs || []).map((doc) => (
+              <div key={doc.id} className="p-4 bg-neutral-950/60 border border-neutral-800 rounded-xl space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <input
+                    type="text"
+                    value={doc.title}
+                    onChange={(e) => updateDoc(doc.id, "title", e.target.value)}
+                    placeholder="Título del documento (ej: Memoria Anual 2025)"
+                    className="flex-1 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeDoc(doc.id)}
+                    className="text-xs text-red-400 hover:text-red-300 px-2 py-1 bg-red-950/30 hover:bg-red-900/40 rounded-md border border-red-800/30 transition-all"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-neutral-500 mb-1">Fecha / Estado</label>
+                    <input
+                      type="text"
+                      value={doc.date}
+                      onChange={(e) => updateDoc(doc.id, "date", e.target.value)}
+                      placeholder="Marzo 2025 / Vigente"
+                      className="w-full px-2.5 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-neutral-500 mb-1">Tamaño</label>
+                    <input
+                      type="text"
+                      value={doc.size}
+                      onChange={(e) => updateDoc(doc.id, "size", e.target.value)}
+                      placeholder="2.4 MB"
+                      className="w-full px-2.5 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-neutral-500 mb-1">Tipo</label>
+                    <input
+                      type="text"
+                      value={doc.type}
+                      onChange={(e) => updateDoc(doc.id, "type", e.target.value)}
+                      placeholder="PDF"
+                      className="w-full px-2.5 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={doc.url}
+                    onChange={(e) => updateDoc(doc.id, "url", e.target.value)}
+                    placeholder="URL del archivo PDF (ej: https://.../memoria.pdf)"
+                    className="flex-1 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-neutral-300 font-mono"
+                  />
+                  <label className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs rounded-lg border border-neutral-700 cursor-pointer transition-colors whitespace-nowrap">
+                    {uploadingDocId === doc.id ? "Subiendo..." : "Subir PDF"}
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleDocUpload(doc.id, f);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Sección 8: Notificaciones Internas ────────────────────────────── */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-primary-600/20 flex items-center justify-center">

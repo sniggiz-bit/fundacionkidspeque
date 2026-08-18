@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { cookies }     from "next/headers";
 import { jwtVerify }   from "jose";
-import { uploadImage } from "@/lib/cloudinary";
+import { uploadImage, uploadDocument } from "@/lib/cloudinary";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.ADMIN_JWT_SECRET ?? "fallback-dev-secret-change-in-production"
@@ -28,11 +28,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // Límite de tamaño: 5MB
+  // Límite de tamaño: 10MB
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > 5 * 1024 * 1024) {
+  if (contentLength > 10 * 1024 * 1024) {
     return NextResponse.json(
-      { error: "Imagen demasiado grande. Máximo 5 MB." },
+      { error: "Archivo demasiado grande. Máximo 10 MB." },
       { status: 413 }
     );
   }
@@ -45,18 +45,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No se recibió ningún archivo." }, { status: 400 });
   }
 
-  // Validar tipo MIME
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  // Validar tipo MIME (imágenes o PDF)
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"];
   if (!allowedTypes.includes(file.type)) {
     return NextResponse.json(
-      { error: "Formato no soportado. Usa JPG, PNG, WebP o AVIF." },
+      { error: "Formato no soportado. Usa JPG, PNG, WebP, AVIF o PDF." },
       { status: 415 }
     );
   }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadImage(buffer, `kidspeque/${folder}`);
+    const result = file.type === "application/pdf"
+      ? await uploadDocument(buffer, `kidspeque/${folder}`)
+      : await uploadImage(buffer, `kidspeque/${folder}`);
 
     return NextResponse.json({
       success: true,

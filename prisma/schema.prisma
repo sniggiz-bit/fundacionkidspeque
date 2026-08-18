@@ -412,6 +412,9 @@ model SiteSettings {
   // Redes sociales adicionales (JSON)
   socialLinks Json? @map("social_links")
 
+  // Documentos de Transparencia (JSON)
+  transparencyDocs Json? @map("transparency_docs")
+
   // Mantenimiento
   maintenanceMode Boolean @default(false) @map("maintenance_mode")
 

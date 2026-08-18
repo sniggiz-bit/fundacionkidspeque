@@ -53,6 +53,16 @@ const settingsSchema = z.object({
   cloudinaryCloudName:   z.string().optional().nullable(),
   cloudinaryApiKey:      z.string().optional().nullable(),
   cloudinaryApiSecret:   z.string().optional().nullable(),
+
+  // Documentos de transparencia
+  transparencyDocs: z.array(z.object({
+    id:    z.string(),
+    title: z.string(),
+    type:  z.string(),
+    size:  z.string(),
+    date:  z.string(),
+    url:   z.string(),
+  })).optional().nullable(),
 });
 
 // ── GET ──────────────────────────────────────────────────────────────────────

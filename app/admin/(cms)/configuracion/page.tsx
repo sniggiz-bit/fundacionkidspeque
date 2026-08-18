@@ -63,6 +63,12 @@ export default async function AdminConfiguracionPage() {
         cloudinaryCloudName:   settings.cloudinaryCloudName ?? "",
         cloudinaryApiKey:      settings.cloudinaryApiKey ?? "",
         cloudinaryApiSecret:   settings.cloudinaryApiSecret ?? "",
+        transparencyDocs:      (settings.transparencyDocs as any) ?? [
+          { id: "1", title: "Memoria Anual 2024", type: "PDF", size: "2.4 MB", date: "Marzo 2025", url: "" },
+          { id: "2", title: "Balance Financiero Auditado 2024", type: "PDF", size: "1.1 MB", date: "Febrero 2025", url: "" },
+          { id: "3", title: "Certificado de Personalidad Jurídica", type: "PDF", size: "0.5 MB", date: "Vigente", url: "" },
+          { id: "4", title: "Estatutos de la Fundación", type: "PDF", size: "3.2 MB", date: "Actualizado 2024", url: "" },
+        ],
       }}
       envVars={envVars}
     />

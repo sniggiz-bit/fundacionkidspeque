@@ -48,6 +48,40 @@ async function configureCloudinary(): Promise<boolean> {
   return true;
 }
 
+export async function uploadDocument(
+  file:     Buffer | string,
+  folder:   string,
+  filename?: string
+): Promise<UploadResult> {
+  const ok = await configureCloudinary();
+  if (!ok) {
+    throw new Error("Cloudinary no está configurado (falta Cloud Name, API Key o API Secret en el panel admin o .env).");
+  }
+
+  const options = {
+    folder,
+    public_id: filename,
+    resource_type: "auto" as const,
+  };
+
+  if (typeof file === "string") {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.upload(file, options, (err, result) => {
+        if (err || !result) reject(err);
+        else resolve({ url: result.secure_url, publicId: result.public_id, width: result.width ?? 0, height: result.height ?? 0, format: result.format ?? "pdf", bytes: result.bytes ?? 0 });
+      });
+    });
+  } else {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(options, (err, result) => {
+        if (err || !result) reject(err);
+        else resolve({ url: result.secure_url, publicId: result.public_id, width: result.width ?? 0, height: result.height ?? 0, format: result.format ?? "pdf", bytes: result.bytes ?? 0 });
+      });
+      uploadStream.end(file);
+    });
+  }
+}
+
 export async function uploadImage(
   file:      Buffer | string,
   folder:    string,
