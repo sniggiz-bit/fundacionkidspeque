@@ -123,10 +123,11 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
+    const dataToSave = { ...parsed.data } as any;
     const settings = await db.siteSettings.upsert({
       where:  { id: "global" },
-      create: { id: "global", ...parsed.data },
-      update: parsed.data,
+      create: { id: "global", ...dataToSave },
+      update: dataToSave,
     });
 
     // Invalidad la caché del sitio público inmediatamente (revalida el layout global)
