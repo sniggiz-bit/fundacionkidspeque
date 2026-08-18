@@ -390,6 +390,21 @@ model SiteSettings {
   facebookUrl  String? @default("https://facebook.com/kidspeque")      @map("facebook_url")
   youtubeUrl   String? @default("https://youtube.com/@kidspeque_cl")  @map("youtube_url")
 
+  // Keys configurables desde el panel Admin
+  flowApiKey             String? @map("flow_api_key")
+  flowSecretKey          String? @map("flow_secret_key")
+  flowEnvironment        String? @default("sandbox") @map("flow_environment")
+
+  transbankCommerceCode String? @map("transbank_commerce_code")
+  transbankApiKey       String? @map("transbank_api_key")
+  transbankEnvironment  String? @default("integration") @map("transbank_environment")
+
+  resendApiKey          String? @map("resend_api_key")
+
+  cloudinaryCloudName   String? @map("cloudinary_cloud_name")
+  cloudinaryApiKey      String? @map("cloudinary_api_key")
+  cloudinaryApiSecret   String? @map("cloudinary_api_secret")
+
   // Emails de notificación
   donationsEmail    String @default("donaciones@kidspeque.cl")  @map("donations_email")   @db.VarChar(255)
   volunteeringEmail String @default("voluntarios@kidspeque.cl") @map("volunteering_email") @db.VarChar(255)

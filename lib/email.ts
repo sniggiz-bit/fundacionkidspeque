@@ -112,18 +112,37 @@ function donationReceiptHtml(d: DonationEmailData): string {
 
 // ── Funciones exportadas ───────────────────────────────────────────────────────
 
+async function getResendClient(): Promise<Resend | null> {
+  let key = process.env.RESEND_API_KEY;
+  if (!key || key.includes("re_xxxx") || key.includes("tu_")) {
+    try {
+      const settings = await db.siteSettings.findUnique({ where: { id: "global" } });
+      if (settings?.resendApiKey) key = settings.resendApiKey;
+    } catch (err) {
+      console.error("[email] Error al consultar DB para resendApiKey:", err);
+    }
+  }
+
+  if (!key || key.includes("re_xxxx") || key.includes("tu_")) {
+    return null;
+  }
+
+  return new Resend(key);
+}
+
 /**
  * Envía el recibo de donación al donante.
  * Si Resend no está configurado, lo omite silenciosamente (no bloquea el flujo).
  */
 export async function sendDonationReceipt(data: DonationEmailData): Promise<void> {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_xxxx") {
+  const client = await getResendClient();
+  if (!client) {
     console.log("[email] Resend no configurado — email omitido para:", data.to);
     return;
   }
 
   try {
-    await resend.emails.send({
+    await client.emails.send({
       from:    FROM,
       to:      data.to,
       subject: `✓ Recibimos tu donación para "${data.dreamTitle}" | Fundación Kidspeque`,
@@ -139,7 +158,8 @@ export async function sendDonationReceipt(data: DonationEmailData): Promise<void
  * Confirma el registro de un voluntario.
  */
 export async function sendVolunteerConfirmation(data: VolunteerEmailData): Promise<void> {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_xxxx") {
+  const client = await getResendClient();
+  if (!client) {
     console.log("[email] Resend no configurado — email de voluntario omitido");
     return;
   }
@@ -153,7 +173,7 @@ export async function sendVolunteerConfirmation(data: VolunteerEmailData): Promi
   };
 
   try {
-    await resend.emails.send({
+    await client.emails.send({
       from:    FROM,
       to:      data.to,
       subject: "Tu solicitud de voluntariado fue recibida | Fundación Kidspeque",

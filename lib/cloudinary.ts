@@ -1,16 +1,11 @@
 /**
  * lib/cloudinary.ts
  * Utilidades para subida de imágenes a Cloudinary.
- * Se usa desde API routes (server-side) — nunca desde el cliente.
+ * Server-side — lee credenciales de process.env o de la base de datos (SiteSettings).
  */
 
 import { v2 as cloudinary } from 'cloudinary';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET?.trim()
-});
+import { db } from '@/lib/db';
 
 export interface UploadResult {
   url:       string;
@@ -21,13 +16,35 @@ export interface UploadResult {
   bytes:     number;
 }
 
-function isConfigured(): boolean {
-  const name = process.env.CLOUDINARY_CLOUD_NAME;
-  const key = process.env.CLOUDINARY_API_KEY;
-  const secret = process.env.CLOUDINARY_API_SECRET;
+async function configureCloudinary(): Promise<boolean> {
+  let cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
+  let api_key    = process.env.CLOUDINARY_API_KEY;
+  let api_secret = process.env.CLOUDINARY_API_SECRET?.trim();
 
-  if (!name || !key || !secret) return false;
-  if (name.includes("tu_") || key.includes("tu_") || secret.includes("tu_")) return false;
+  const isPlaceholder = (val?: string | null) => !val || val.includes("tu_") || val.includes("placeholder");
+
+  if (isPlaceholder(cloud_name) || isPlaceholder(api_key) || isPlaceholder(api_secret)) {
+    try {
+      const settings = await db.siteSettings.findUnique({ where: { id: "global" } });
+      if (settings?.cloudinaryCloudName) cloud_name = settings.cloudinaryCloudName;
+      if (settings?.cloudinaryApiKey)    api_key    = settings.cloudinaryApiKey;
+      if (settings?.cloudinaryApiSecret) api_secret = settings.cloudinaryApiSecret;
+    } catch (err) {
+      console.error("[Cloudinary] Error leyendo SiteSettings:", err);
+    }
+  }
+
+  if (isPlaceholder(cloud_name) || isPlaceholder(api_key) || isPlaceholder(api_secret)) {
+    return false;
+  }
+
+  cloudinary.config({
+    cloud_name,
+    api_key,
+    api_secret,
+    secure: true,
+  });
+
   return true;
 }
 
@@ -36,8 +53,9 @@ export async function uploadImage(
   folder:    string,
   publicId?: string
 ): Promise<UploadResult> {
-  if (!isConfigured()) {
-    throw new Error("Cloudinary no está configurado correctamente en .env.local (faltan credenciales reales).");
+  const ok = await configureCloudinary();
+  if (!ok) {
+    throw new Error("Cloudinary no está configurado (falta Cloud Name, API Key o API Secret en el panel admin o .env).");
   }
 
   const options = {
@@ -65,7 +83,9 @@ export async function uploadImage(
 }
 
 export async function deleteImage(publicId: string): Promise<void> {
-  if (!isConfigured()) return;
+  const ok = await configureCloudinary();
+  if (!ok) return;
+
   return new Promise((resolve, reject) => {
     cloudinary.uploader.destroy(publicId, (error, result) => {
       if (error) reject(error);

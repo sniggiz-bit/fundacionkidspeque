@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
  * PUT  /api/admin/settings  — Guardar configuración del sitio
  * ─────────────────────────────────────────────────────────────────
  * Lee/escribe la tabla site_settings (único registro con id="global").
- * También devuelve el estado real de las variables de entorno del servidor.
+ * Permite configurar las API Keys desde el panel admin o leer .env.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -26,16 +26,6 @@ async function verifyAdmin(): Promise<boolean> {
   } catch { return false; }
 }
 
-// Verificar si una variable de entorno está configurada (no vacía ni placeholder)
-function envStatus(key: string): "ok" | "missing" {
-  const val = process.env[key];
-  if (!val) return "missing";
-  // Detectar placeholders comunes
-  const placeholders = ["tu_", "xxxx", "cambiar", "change_", "example", "placeholder"];
-  const isPlaceholder = placeholders.some((p) => val.toLowerCase().includes(p));
-  return isPlaceholder ? "missing" : "ok";
-}
-
 const settingsSchema = z.object({
   foundationName:    z.string().min(3).max(200),
   tagline:           z.string().min(3).max(300),
@@ -50,6 +40,18 @@ const settingsSchema = z.object({
   youtubeUrl:        z.string().url().or(z.literal("")).optional().nullable(),
   donationsEmail:    z.string().email().max(255),
   volunteeringEmail:  z.string().email().max(255),
+
+  // Keys configurables desde Admin Panel
+  flowApiKey:            z.string().optional().nullable(),
+  flowSecretKey:         z.string().optional().nullable(),
+  flowEnvironment:       z.enum(["sandbox", "production"]).optional().nullable(),
+  transbankCommerceCode: z.string().optional().nullable(),
+  transbankApiKey:       z.string().optional().nullable(),
+  transbankEnvironment:  z.string().optional().nullable(),
+  resendApiKey:          z.string().optional().nullable(),
+  cloudinaryCloudName:   z.string().optional().nullable(),
+  cloudinaryApiKey:      z.string().optional().nullable(),
+  cloudinaryApiSecret:   z.string().optional().nullable(),
 });
 
 // ── GET ──────────────────────────────────────────────────────────────────────
@@ -59,23 +61,29 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // Obtener o crear configuración con upsert (primera vez crea el registro)
   const settings = await db.siteSettings.upsert({
     where:  { id: "global" },
     create: { id: "global" },
     update: {},
   });
 
-  // Estado de variables de entorno (sin revelar valores)
+  function checkKeyStatus(envKey: string, dbVal?: string | null): "ok" | "missing" {
+    if (dbVal && dbVal.trim().length > 3 && !dbVal.includes("tu_")) return "ok";
+    const val = process.env[envKey];
+    if (!val) return "missing";
+    const placeholders = ["tu_", "xxxx", "cambiar", "change_", "placeholder", "example"];
+    return placeholders.some((p) => val.toLowerCase().includes(p)) ? "missing" : "ok";
+  }
+
   const envVars = [
-    { key: "TRANSBANK_ENVIRONMENT", label: "Transbank",        status: envStatus("TRANSBANK_API_KEY") },
-    { key: "FLOW_API_KEY",          label: "Flow.cl",           status: envStatus("FLOW_API_KEY") },
-    { key: "PAYPAL_CLIENT_ID",      label: "PayPal",            status: envStatus("PAYPAL_CLIENT_ID") },
-    { key: "DATABASE_URL",          label: "PostgreSQL",        status: envStatus("DATABASE_URL") },
-    { key: "ADMIN_JWT_SECRET",      label: "JWT Secret",        status: envStatus("ADMIN_JWT_SECRET") },
-    { key: "CLOUDINARY_API_KEY",    label: "Cloudinary",        status: envStatus("CLOUDINARY_API_KEY") },
-    { key: "RESEND_API_KEY",        label: "Email (Resend)",    status: envStatus("RESEND_API_KEY") },
-    { key: "FLOW_SECRET_KEY",       label: "Flow Secret",       status: envStatus("FLOW_SECRET_KEY") },
+    { key: "TRANSBANK_API_KEY",  label: "Transbank Webpay", status: checkKeyStatus("TRANSBANK_API_KEY", settings.transbankApiKey) },
+    { key: "FLOW_API_KEY",       label: "Flow.cl API Key",  status: checkKeyStatus("FLOW_API_KEY", settings.flowApiKey) },
+    { key: "FLOW_SECRET_KEY",    label: "Flow.cl Secret",   status: checkKeyStatus("FLOW_SECRET_KEY", settings.flowSecretKey) },
+    { key: "PAYPAL_CLIENT_ID",   label: "PayPal",           status: checkKeyStatus("PAYPAL_CLIENT_ID") },
+    { key: "DATABASE_URL",       label: "PostgreSQL",        status: checkKeyStatus("DATABASE_URL") },
+    { key: "ADMIN_JWT_SECRET",   label: "JWT Secret",       status: checkKeyStatus("ADMIN_JWT_SECRET") },
+    { key: "CLOUDINARY_API_KEY", label: "Cloudinary",       status: checkKeyStatus("CLOUDINARY_API_KEY", settings.cloudinaryApiKey) },
+    { key: "RESEND_API_KEY",     label: "Email (Resend)",   status: checkKeyStatus("RESEND_API_KEY", settings.resendApiKey) },
   ];
 
   return NextResponse.json({

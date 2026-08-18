@@ -1,7 +1,7 @@
 /**
  * components/admin/ConfigForm.tsx
  * Formulario interactivo de configuración del panel admin.
- * Client Component — maneja el guardado con fetch a /api/admin/settings.
+ * Client Component — maneja el guardado de ajustes y API Keys en la DB.
  */
 
 "use client";
@@ -10,7 +10,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Key, Globe, Bell, Shield, CheckCircle2, AlertCircle,
-  Save, Loader2, RefreshCw, FileText, Share2, MapPin, Clock,
+  Save, Loader2, RefreshCw, FileText, Share2, CreditCard, Image as ImageIcon, Mail, Eye, EyeOff
 } from "lucide-react";
 
 interface EnvVar {
@@ -20,19 +20,33 @@ interface EnvVar {
 }
 
 interface Settings {
-  foundationName:    string;
-  tagline:           string;
-  contactEmail:      string;
-  contactPhone:      string;
-  address:           string;
-  schedule:          string;
-  rut:               string;
-  legalPersonId:     string;
-  instagramUrl:      string;
-  facebookUrl:       string;
-  youtubeUrl:        string;
-  donationsEmail:    string;
-  volunteeringEmail: string;
+  foundationName:        string;
+  tagline:               string;
+  contactEmail:          string;
+  contactPhone:          string;
+  address:               string;
+  schedule:              string;
+  rut:                   string;
+  legalPersonId:         string;
+  instagramUrl:          string;
+  facebookUrl:           string;
+  youtubeUrl:            string;
+  donationsEmail:        string;
+  volunteeringEmail:     string;
+
+  flowApiKey:            string;
+  flowSecretKey:         string;
+  flowEnvironment:       string;
+
+  transbankCommerceCode: string;
+  transbankApiKey:       string;
+  transbankEnvironment:  string;
+
+  resendApiKey:          string;
+
+  cloudinaryCloudName:   string;
+  cloudinaryApiKey:      string;
+  cloudinaryApiSecret:   string;
 }
 
 interface Props {
@@ -43,14 +57,19 @@ interface Props {
 export function ConfigForm({ initialSettings, envVars }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [form,    setForm]    = useState<Settings>(initialSettings);
-  const [saved,   setSaved]   = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [form, setForm] = useState<Settings>(initialSettings);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
 
   function update(key: keyof Settings, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
     setError(null);
+  }
+
+  function toggleSecret(key: string) {
+    setShowSecrets((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   async function handleSave() {
@@ -92,13 +111,13 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display font-bold text-2xl text-white">Configuración del Sitio & Footer</h1>
-        <p className="text-neutral-500 text-sm mt-0.5">Edita la información global de la fundación, redes sociales, datos del footer y notificaciones.</p>
+        <h1 className="font-display font-bold text-2xl text-white">Configuración del Sitio & Integraciones</h1>
+        <p className="text-neutral-500 text-sm mt-0.5">Edita la información pública, datos del footer y configura las API Keys de Flow, Resend, Cloudinary y Transbank directamente desde aquí.</p>
       </div>
 
       <div className="space-y-6">
 
-        {/* ── Sección: Sitio web & Contacto (Footer) ─────────────────────────── */}
+        {/* ── Sección 1: Información Principal & Contacto (Footer) ───────────── */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-primary-600/20 flex items-center justify-center">
@@ -183,7 +202,157 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
           </div>
         </div>
 
-        {/* ── Sección: Datos Legales (Footer) ───────────────────────────── */}
+        {/* ── Sección 2: Pasarela Flow.cl ───────────────────────────────────── */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
+              <CreditCard size={18} className="text-blue-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-white text-sm">Pasarela de Pago Flow.cl</h2>
+              <p className="text-xs text-neutral-500">Configura tu API Key y Secret Key para recibir donaciones con tarjetas y transferencias en Chile.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Entorno</label>
+              <select
+                value={form.flowEnvironment}
+                onChange={(e) => update("flowEnvironment", e.target.value)}
+                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="sandbox">Sandbox (Pruebas)</option>
+                <option value="production">Producción (Real)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Flow API Key</label>
+              <input
+                type="text"
+                value={form.flowApiKey}
+                onChange={(e) => update("flowApiKey", e.target.value)}
+                placeholder="Ej: 9381A4B0-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Flow Secret Key</label>
+              <div className="relative">
+                <input
+                  type={showSecrets["flowSecretKey"] ? "text" : "password"}
+                  value={form.flowSecretKey}
+                  onChange={(e) => update("flowSecretKey", e.target.value)}
+                  placeholder="Secret Key otorgada por Flow.cl"
+                  className="w-full px-4 py-2.5 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleSecret("flowSecretKey")}
+                  className="absolute right-3 top-2.5 text-neutral-500 hover:text-neutral-300"
+                >
+                  {showSecrets["flowSecretKey"] ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Sección 3: Almacenamiento de Imágenes Cloudinary ─────────────── */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-cyan-600/20 flex items-center justify-center">
+              <ImageIcon size={18} className="text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-white text-sm">Almacenamiento de Imágenes (Cloudinary)</h2>
+              <p className="text-xs text-neutral-500">Credenciales para subir fotos de sueños y productos desde el panel admin.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Cloud Name</label>
+              <input
+                type="text"
+                value={form.cloudinaryCloudName}
+                onChange={(e) => update("cloudinaryCloudName", e.target.value)}
+                placeholder="Ej: dxxXXXXXX"
+                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-400 mb-2">API Key</label>
+                <input
+                  type="text"
+                  value={form.cloudinaryApiKey}
+                  onChange={(e) => update("cloudinaryApiKey", e.target.value)}
+                  placeholder="Ej: 123456789012345"
+                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-400 mb-2">API Secret</label>
+                <div className="relative">
+                  <input
+                    type={showSecrets["cloudinaryApiSecret"] ? "text" : "password"}
+                    value={form.cloudinaryApiSecret}
+                    onChange={(e) => update("cloudinaryApiSecret", e.target.value)}
+                    placeholder="API Secret de Cloudinary"
+                    className="w-full px-4 py-2.5 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSecret("cloudinaryApiSecret")}
+                    className="absolute right-3 top-2.5 text-neutral-500 hover:text-neutral-300"
+                  >
+                    {showSecrets["cloudinaryApiSecret"] ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Sección 4: Emails Transaccionales (Resend) ────────────────────── */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-teal-600/20 flex items-center justify-center">
+              <Mail size={18} className="text-teal-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-white text-sm">Emails Transaccionales (Resend)</h2>
+              <p className="text-xs text-neutral-500">API Key para envío de recibos de donaciones y comprobantes.</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-neutral-400 mb-2">Resend API Key</label>
+            <div className="relative">
+              <input
+                type={showSecrets["resendApiKey"] ? "text" : "password"}
+                value={form.resendApiKey}
+                onChange={(e) => update("resendApiKey", e.target.value)}
+                placeholder="re_123456789_XXXXXX..."
+                className="w-full px-4 py-2.5 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => toggleSecret("resendApiKey")}
+                className="absolute right-3 top-2.5 text-neutral-500 hover:text-neutral-300"
+              >
+                {showSecrets["resendApiKey"] ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Sección 5: Datos Legales (Footer) ───────────────────────────── */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-purple-600/20 flex items-center justify-center">
@@ -220,7 +389,7 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
           </div>
         </div>
 
-        {/* ── Sección: Redes Sociales (Footer) ──────────────────────────── */}
+        {/* ── Sección 6: Redes Sociales (Footer) ──────────────────────────── */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-pink-600/20 flex items-center justify-center">
@@ -268,7 +437,7 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
           </div>
         </div>
 
-        {/* ── Sección: Notificaciones ────────────────────────────────────── */}
+        {/* ── Sección 7: Notificaciones Internas ────────────────────────────── */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-primary-600/20 flex items-center justify-center">
@@ -305,25 +474,25 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
           </div>
         </div>
 
-        {/* ── Sección: Variables de entorno ──────────────────────────────── */}
+        {/* ── Sección 8: Estado de Variables de Entorno ───────────────────── */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-amber-600/20 flex items-center justify-center">
               <Key size={18} className="text-amber-400" />
             </div>
             <div className="flex-1">
-              <h2 className="font-semibold text-white text-sm">Variables de entorno</h2>
+              <h2 className="font-semibold text-white text-sm">Estado General de Servicios</h2>
               <p className="text-xs text-neutral-500">
-                Se configuran en el servidor / Vercel.
+                Se detectan automáticamente las llaves guardadas en el panel o en el servidor.
               </p>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1 text-green-400">
-                <CheckCircle2 size={12} /> {okCount} ok
+                <CheckCircle2 size={12} /> {okCount} configuradas
               </span>
               {missingCount > 0 && (
                 <span className="flex items-center gap-1 text-amber-400">
-                  <AlertCircle size={12} /> {missingCount} sin configurar
+                  <AlertCircle size={12} /> {missingCount} por configurar
                 </span>
               )}
             </div>
@@ -365,7 +534,7 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
         {saved && (
           <div className="flex items-center gap-2 bg-green-900/20 border border-green-800 text-green-400 rounded-xl px-4 py-3 text-sm">
             <CheckCircle2 size={15} />
-            Configuración guardada correctamente.
+            Configuración e integraciones guardadas correctamente.
           </div>
         )}
 
