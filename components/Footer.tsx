@@ -1,10 +1,31 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, Instagram, Facebook, Youtube, Mail, Phone, MapPin, Clock } from "lucide-react";
+import { db } from "@/lib/db";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export function Footer() {
+export async function Footer() {
+  // Cargar la configuración dinámica guardada desde el panel admin
+  let settings = null;
+  try {
+    settings = await db.siteSettings.findUnique({ where: { id: "global" } });
+  } catch (err) {
+    console.error("[Footer] Error cargando siteSettings:", err);
+  }
+
+  const tagline = settings?.tagline || "Fundación Social Niños Creativos. Cumplimos sueños de niños y niñas a través de la creatividad y la libertad de expresión.";
+  const contactEmail = settings?.contactEmail || "contacto@kidspeque.cl";
+  const contactPhone = settings?.contactPhone || "+56 2 2345 6789";
+  const address = settings?.address || "Santiago, Región Metropolitana, Chile";
+  const schedule = settings?.schedule || "Lunes a Viernes 09:00 a 17:00 hrs.";
+  const rut = settings?.rut || "76.XXX.XXX-X";
+  const legalPersonId = settings?.legalPersonId || "Nº XXXX/2024";
+
+  const instagramUrl = settings?.instagramUrl || "https://instagram.com/kidspeque_cl";
+  const facebookUrl  = settings?.facebookUrl  || "https://facebook.com/kidspeque";
+  const youtubeUrl   = settings?.youtubeUrl   || "https://youtube.com/@kidspeque_cl";
+
   return (
     <footer id="nosotros" className="bg-neutral-950 text-neutral-300" role="contentinfo">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
@@ -12,7 +33,7 @@ export function Footer() {
         {/* Grid principal */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-neutral-800">
 
-          {/* Columna 1: Marca */}
+          {/* Columna 1: Marca & Redes */}
           <div className="space-y-4 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 group" aria-label="Fundación Kidspeque — inicio">
               <Image
@@ -24,15 +45,14 @@ export function Footer() {
               />
             </Link>
             <p className="text-sm leading-relaxed text-neutral-400 max-w-xs">
-              Fundación Social Niños Creativos. Cumplimos sueños de niños y niñas
-              a través de la creatividad y la libertad de expresión.
+              {tagline}
             </p>
             {/* Redes sociales */}
             <div className="flex items-center gap-3 pt-2" role="list" aria-label="Redes sociales">
               {[
-                { Icon: Instagram, href: "https://instagram.com/kidspeque_cl", label: "Instagram" },
-                { Icon: Facebook,  href: "https://facebook.com/kidspeque",  label: "Facebook"  },
-                { Icon: Youtube,   href: "https://youtube.com/@kidspeque_cl",  label: "YouTube"   },
+                { Icon: Instagram, href: instagramUrl, label: "Instagram" },
+                { Icon: Facebook,  href: facebookUrl,  label: "Facebook"  },
+                { Icon: Youtube,   href: youtubeUrl,   label: "YouTube"   },
               ].map(({ Icon, href, label }) => (
                 <a
                   key={label}
@@ -107,20 +127,20 @@ export function Footer() {
             <ul className="space-y-3" role="list">
               <li>
                 <a
-                  href="mailto:contacto@kidspeque.cl"
+                  href={`mailto:${contactEmail}`}
                   className="flex items-start gap-3 text-sm text-neutral-400 hover:text-white transition-colors"
                 >
                   <Mail size={15} className="mt-0.5 flex-shrink-0 text-primary-400" aria-hidden />
-                  contacto@kidspeque.cl
+                  {contactEmail}
                 </a>
               </li>
               <li>
                 <a
-                  href="tel:+56223456789"
+                  href={`tel:${contactPhone.replace(/\s+/g, '')}`}
                   className="flex items-start gap-3 text-sm text-neutral-400 hover:text-white transition-colors"
                 >
                   <Phone size={15} className="mt-0.5 flex-shrink-0 text-primary-400" aria-hidden />
-                  +56 2 2345 6789
+                  {contactPhone}
                 </a>
               </li>
               <li className="flex items-start gap-3 text-sm text-neutral-400">
@@ -128,14 +148,12 @@ export function Footer() {
                 <span>
                   <strong className="text-neutral-300">Atención al cliente</strong>
                   <br />
-                  Lunes a Viernes
-                  <br />
-                  09:00 a 17:00 hrs.
+                  {schedule}
                 </span>
               </li>
               <li className="flex items-start gap-3 text-sm text-neutral-400">
                 <MapPin size={15} className="mt-0.5 flex-shrink-0 text-primary-400" aria-hidden />
-                <span>Santiago, Región Metropolitana, Chile</span>
+                <span>{address}</span>
               </li>
             </ul>
           </div>
@@ -150,7 +168,7 @@ export function Footer() {
 
           {/* Datos legales NGO */}
           <p id="transparencia" className="text-center sm:text-right">
-            RUT Fundación: 76.XXX.XXX-X · Personalidad Jurídica N° XXXX/2024
+            RUT Fundación: {rut} · Personalidad Jurídica {legalPersonId}
           </p>
 
           <nav aria-label="Políticas y términos">

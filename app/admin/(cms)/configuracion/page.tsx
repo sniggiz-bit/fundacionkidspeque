@@ -44,6 +44,13 @@ export default async function AdminConfiguracionPage() {
         tagline:           settings.tagline,
         contactEmail:      settings.contactEmail,
         contactPhone:      settings.contactPhone ?? "",
+        address:           settings.address ?? "",
+        schedule:          settings.schedule ?? "",
+        rut:               settings.rut ?? "",
+        legalPersonId:     settings.legalPersonId ?? "",
+        instagramUrl:      settings.instagramUrl ?? "",
+        facebookUrl:       settings.facebookUrl ?? "",
+        youtubeUrl:        settings.youtubeUrl ?? "",
         donationsEmail:    settings.donationsEmail,
         volunteeringEmail: settings.volunteeringEmail,
       }}

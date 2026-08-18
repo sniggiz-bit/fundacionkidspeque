@@ -375,15 +375,26 @@ model SiteSettings {
 
   // Identidad de la fundación
   foundationName String  @default("Fundación Kidspeque") @map("foundation_name") @db.VarChar(200)
-  tagline        String  @default("Cada niño merece soñar.") @db.VarChar(300)
+  tagline        String  @default("Fundación Social Niños Creativos. Cumplimos sueños de niños y niñas a través de la creatividad y la libertad de expresión.") @db.VarChar(300)
   contactEmail   String  @default("contacto@kidspeque.cl")  @map("contact_email")  @db.VarChar(255)
-  contactPhone   String? @map("contact_phone") @db.VarChar(30)
+  contactPhone   String? @default("+56 2 2345 6789") @map("contact_phone") @db.VarChar(30)
+  address        String? @default("Santiago, Región Metropolitana, Chile") @db.VarChar(200)
+  schedule       String? @default("Lunes a Viernes 09:00 a 17:00 hrs.") @db.VarChar(150)
+
+  // Datos legales NGO
+  rut           String? @default("76.XXX.XXX-X") @db.VarChar(30)
+  legalPersonId String? @default("Nº XXXX/2024") @map("legal_person_id") @db.VarChar(50)
+
+  // Redes sociales
+  instagramUrl String? @default("https://instagram.com/kidspeque_cl") @map("instagram_url")
+  facebookUrl  String? @default("https://facebook.com/kidspeque")      @map("facebook_url")
+  youtubeUrl   String? @default("https://youtube.com/@kidspeque_cl")  @map("youtube_url")
 
   // Emails de notificación
-  donationsEmail   String @default("donaciones@kidspeque.cl")  @map("donations_email")   @db.VarChar(255)
+  donationsEmail    String @default("donaciones@kidspeque.cl")  @map("donations_email")   @db.VarChar(255)
   volunteeringEmail String @default("voluntarios@kidspeque.cl") @map("volunteering_email") @db.VarChar(255)
 
-  // Redes sociales (JSON)
+  // Redes sociales adicionales (JSON)
   socialLinks Json? @map("social_links")
 
   // Mantenimiento

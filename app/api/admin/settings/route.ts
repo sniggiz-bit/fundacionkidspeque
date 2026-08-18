@@ -37,12 +37,19 @@ function envStatus(key: string): "ok" | "missing" {
 }
 
 const settingsSchema = z.object({
-  foundationName:   z.string().min(3).max(200),
-  tagline:          z.string().min(3).max(300),
-  contactEmail:     z.string().email().max(255),
-  contactPhone:     z.string().max(30).optional().nullable(),
-  donationsEmail:   z.string().email().max(255),
-  volunteeringEmail: z.string().email().max(255),
+  foundationName:    z.string().min(3).max(200),
+  tagline:           z.string().min(3).max(300),
+  contactEmail:      z.string().email().max(255),
+  contactPhone:      z.string().max(30).optional().nullable(),
+  address:           z.string().max(200).optional().nullable(),
+  schedule:          z.string().max(150).optional().nullable(),
+  rut:               z.string().max(30).optional().nullable(),
+  legalPersonId:     z.string().max(50).optional().nullable(),
+  instagramUrl:      z.string().url().or(z.literal("")).optional().nullable(),
+  facebookUrl:       z.string().url().or(z.literal("")).optional().nullable(),
+  youtubeUrl:        z.string().url().or(z.literal("")).optional().nullable(),
+  donationsEmail:    z.string().email().max(255),
+  volunteeringEmail:  z.string().email().max(255),
 });
 
 // ── GET ──────────────────────────────────────────────────────────────────────
