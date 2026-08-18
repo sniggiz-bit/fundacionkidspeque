@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useRef }    from "react";
+import { useState, useRef, useEffect }    from "react";
 import { useRouter }   from "next/navigation";
 import { useForm }     from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +20,7 @@ const productSchema = z.object({
   slug:             z.string().min(3).max(250).regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
   description:      z.string().min(20, "Descripción muy corta"),
   shortDescription: z.string().min(10).max(120, "Máximo 120 caracteres"),
-  category:         z.enum(["ropa_organica", "delantales", "pantalones", "accesorios", "kits"]),
+  category:         z.string().min(1, "Selecciona una categoría"),
   tags:             z.string(), // CSV
   price:            z.number().int().min(1000, "Precio mínimo: $1.000 CLP"),
   compareAtPrice:   z.number().int().optional(),
@@ -35,7 +35,7 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>;
 
-const CATEGORIES: Array<{ value: string; label: string }> = [
+const DEFAULT_CATEGORIES = [
   { value: "ropa_organica", label: "Ropa Orgánica" },
   { value: "delantales",    label: "Delantales" },
   { value: "pantalones",    label: "Pantalones" },
@@ -55,6 +55,23 @@ export function ProductForm({ mode, productId, defaults }: Props) {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError,    setUploadError]    = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [categoriesList, setCategoriesList] = useState<Array<{ value: string; label: string }>>(DEFAULT_CATEGORIES);
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && json?.data?.productCategories && Array.isArray(json.data.productCategories)) {
+          const loaded = json.data.productCategories.map((c: { slug: string; name: string }) => ({
+            value: c.slug,
+            label: c.name,
+          }));
+          setCategoriesList(loaded);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isDirty } } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -165,7 +182,7 @@ export function ProductForm({ mode, productId, defaults }: Props) {
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">Categoría *</label>
             <select {...register("category")} className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
-              {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              {categoriesList.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             {errors.category && <p className="text-xs text-red-400 mt-1">{errors.category.message}</p>}
           </div>

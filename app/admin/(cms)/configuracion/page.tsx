@@ -72,6 +72,13 @@ export default async function AdminConfiguracionPage() {
         chatbotEnabled:        settings.chatbotEnabled ?? true,
         chatbotWelcomeMessage: settings.chatbotWelcomeMessage ?? "¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.",
         whatsappPhone:         settings.whatsappPhone ?? "56911223344",
+        productCategories:     (settings.productCategories as any) ?? [
+          { slug: "ropa_organica", name: "Ropa Orgánica" },
+          { slug: "delantales",    name: "Delantales" },
+          { slug: "pantalones",    name: "Pantalones" },
+          { slug: "accesorios",    name: "Accesorios" },
+          { slug: "kits",          name: "Kits Creativos" },
+        ],
       }}
       envVars={envVars}
     />

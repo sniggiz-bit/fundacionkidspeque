@@ -36,7 +36,7 @@ const productSchema = z.object({
   slug:             z.string().min(3).max(250).regex(/^[a-z0-9-]+$/),
   description:      z.string().min(20),
   shortDescription: z.string().min(10).max(120),
-  category:         z.enum(["ropa_organica", "delantales", "pantalones", "accesorios", "kits"]),
+  category:         z.string().min(1, "La categoría es requerida"),
   tags:             z.array(z.string()).default([]),
   price:            z.number().int().min(1000),
   compareAtPrice:   z.number().int().optional(),

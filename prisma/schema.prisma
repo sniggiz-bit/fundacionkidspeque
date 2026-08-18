@@ -230,7 +230,7 @@ model Product {
   slug             String          @unique @db.VarChar(250)
   description      String          @db.Text
   shortDescription String          @map("short_description") @db.VarChar(120)
-  category         ProductCategory
+  category         String          @db.VarChar(100)
   tags             String[]        @default([])
 
   price          Int  // CLP
@@ -414,6 +414,9 @@ model SiteSettings {
 
   // Documentos de Transparencia (JSON)
   transparencyDocs Json? @map("transparency_docs")
+
+  // Categorías de la Tienda (JSON)
+  productCategories Json? @map("product_categories")
 
   // Chatbot & WhatsApp
   chatbotEnabled        Boolean @default(true) @map("chatbot_enabled")

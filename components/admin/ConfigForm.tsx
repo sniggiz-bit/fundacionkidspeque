@@ -62,6 +62,8 @@ interface Settings {
   chatbotEnabled:        boolean;
   chatbotWelcomeMessage: string;
   whatsappPhone:         string;
+
+  productCategories:     Array<{ slug: string; name: string }>;
 }
 
 interface Props {
@@ -128,6 +130,34 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
     } finally {
       setUploadingDocId(null);
     }
+  }
+
+  function addCategory() {
+    setForm((prev) => ({
+      ...prev,
+      productCategories: [
+        ...(prev.productCategories || []),
+        { slug: `categoria-${Date.now()}`, name: "Nueva Categoría" },
+      ],
+    }));
+    setSaved(false);
+  }
+
+  function updateCategory(index: number, key: "slug" | "name", value: string) {
+    setForm((prev) => {
+      const list = [...(prev.productCategories || [])];
+      list[index] = { ...list[index], [key]: value };
+      return { ...prev, productCategories: list };
+    });
+    setSaved(false);
+  }
+
+  function removeCategory(index: number) {
+    setForm((prev) => {
+      const list = (prev.productCategories || []).filter((_, i) => i !== index);
+      return { ...prev, productCategories: list };
+    });
+    setSaved(false);
   }
 
   async function handleSave() {
@@ -651,6 +681,69 @@ export function ConfigForm({ initialSettings, envVars }: Props) {
               />
               <p className="text-[11px] text-neutral-500 mt-1">Ejemplo: 56911223344 (Chile). Al hacer clic en WhatsApp en el chat, derivará la conversación a este número.</p>
             </div>
+          </div>
+        </div>
+
+        {/* ── Sección 9: Categorías de Productos (Tienda Solidaria) ──────────── */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-600/20 flex items-center justify-center">
+                <ShoppingBag size={18} className="text-orange-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-white text-sm">Categorías de Productos (Tienda Solidaria)</h2>
+                <p className="text-xs text-neutral-500">Crea, edita o elimina las categorías disponibles para clasificar tus productos.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={addCategory}
+              className="px-3 py-1.5 bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 text-xs font-semibold rounded-lg border border-orange-500/30 transition-all flex items-center gap-1.5"
+            >
+              + Agregar Categoría
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {(form.productCategories || []).map((cat, index) => (
+              <div key={index} className="flex items-center gap-3 p-3 bg-neutral-950/60 border border-neutral-800 rounded-xl">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-neutral-500 mb-1">Nombre Visible (ej: Ropa Orgánica)</label>
+                    <input
+                      type="text"
+                      value={cat.name}
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        const autoSlug = newName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+                        updateCategory(index, "name", newName);
+                        updateCategory(index, "slug", autoSlug);
+                      }}
+                      placeholder="Nombre de la categoría"
+                      className="w-full px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-neutral-500 mb-1">Identificador Slug (ej: ropa_organica)</label>
+                    <input
+                      type="text"
+                      value={cat.slug}
+                      onChange={(e) => updateCategory(index, "slug", e.target.value)}
+                      placeholder="slug_identificador"
+                      className="w-full px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-neutral-300 font-mono"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeCategory(index)}
+                  className="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 bg-red-950/30 hover:bg-red-900/40 rounded-lg border border-red-800/30 transition-all self-end"
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
           </div>
         </div>
 

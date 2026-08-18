@@ -64,6 +64,12 @@ const settingsSchema = z.object({
     url:   z.string(),
   })).optional().nullable(),
 
+  // Categorías de la Tienda
+  productCategories: z.array(z.object({
+    slug: z.string(),
+    name: z.string(),
+  })).optional().nullable(),
+
   // Chatbot & WhatsApp
   chatbotEnabled:        z.boolean().optional(),
   chatbotWelcomeMessage: z.string().max(500).optional().nullable(),

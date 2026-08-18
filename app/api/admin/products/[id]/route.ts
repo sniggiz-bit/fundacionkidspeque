@@ -29,7 +29,7 @@ const productUpdateSchema = z.object({
   slug:             z.string().min(3).max(250).regex(/^[a-z0-9-]+$/).optional(),
   description:      z.string().min(20).optional(),
   shortDescription: z.string().min(10).max(120).optional(),
-  category:         z.enum(["ropa_organica", "delantales", "pantalones", "accesorios", "kits"]).optional(),
+  category:         z.string().min(1).optional(),
   tags:             z.array(z.string()).optional(),
   price:            z.number().int().min(1000).optional(),
   compareAtPrice:   z.number().int().nullable().optional(),
