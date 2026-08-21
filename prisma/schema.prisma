@@ -423,6 +423,12 @@ model SiteSettings {
   chatbotWelcomeMessage String? @default("¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.") @map("chatbot_welcome_message")
   whatsappPhone         String? @default("56911223344") @map("whatsapp_phone")
 
+  // Hero principal
+  heroSettings Json? @map("hero_settings")
+
+  // Contraseña del panel admin (hash bcrypt — sobreescribe ADMIN_PASSWORD_HASH del .env si está presente)
+  adminPasswordHash String? @map("admin_password_hash")
+
   // Mantenimiento
   maintenanceMode Boolean @default(false) @map("maintenance_mode")
 

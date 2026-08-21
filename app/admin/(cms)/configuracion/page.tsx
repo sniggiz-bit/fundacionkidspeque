@@ -4,8 +4,9 @@
  */
 
 import type { Metadata } from "next";
-import { db } from "@/lib/db";
-import { ConfigForm } from "@/components/admin/ConfigForm";
+import { db }               from "@/lib/db";
+import { ConfigForm }       from "@/components/admin/ConfigForm";
+import { PasswordChangeForm } from "@/components/admin/PasswordChangeForm";
 
 export const metadata: Metadata = { title: "Configuración" };
 export const dynamic = 'force-dynamic';
@@ -38,49 +39,56 @@ export default async function AdminConfiguracionPage() {
   ];
 
   return (
-    <ConfigForm
-      initialSettings={{
-        foundationName:        settings.foundationName,
-        tagline:               settings.tagline,
-        contactEmail:          settings.contactEmail,
-        contactPhone:          settings.contactPhone ?? "",
-        address:               settings.address ?? "",
-        schedule:              settings.schedule ?? "",
-        rut:                   settings.rut ?? "",
-        legalPersonId:         settings.legalPersonId ?? "",
-        instagramUrl:          settings.instagramUrl ?? "",
-        facebookUrl:           settings.facebookUrl ?? "",
-        youtubeUrl:            settings.youtubeUrl ?? "",
-        donationsEmail:        settings.donationsEmail,
-        volunteeringEmail:     settings.volunteeringEmail,
-        flowApiKey:            settings.flowApiKey ?? "",
-        flowSecretKey:         settings.flowSecretKey ?? "",
-        flowEnvironment:       settings.flowEnvironment ?? "sandbox",
-        transbankCommerceCode: settings.transbankCommerceCode ?? "",
-        transbankApiKey:       settings.transbankApiKey ?? "",
-        transbankEnvironment:  settings.transbankEnvironment ?? "integration",
-        resendApiKey:          settings.resendApiKey ?? "",
-        cloudinaryCloudName:   settings.cloudinaryCloudName ?? "",
-        cloudinaryApiKey:      settings.cloudinaryApiKey ?? "",
-        cloudinaryApiSecret:   settings.cloudinaryApiSecret ?? "",
-        transparencyDocs:      (settings.transparencyDocs as any) ?? [
-          { id: "1", title: "Memoria Anual 2024", type: "PDF", size: "2.4 MB", date: "Marzo 2025", url: "" },
-          { id: "2", title: "Balance Financiero Auditado 2024", type: "PDF", size: "1.1 MB", date: "Febrero 2025", url: "" },
-          { id: "3", title: "Certificado de Personalidad Jurídica", type: "PDF", size: "0.5 MB", date: "Vigente", url: "" },
-          { id: "4", title: "Estatutos de la Fundación", type: "PDF", size: "3.2 MB", date: "Actualizado 2024", url: "" },
-        ],
-        chatbotEnabled:        settings.chatbotEnabled ?? true,
-        chatbotWelcomeMessage: settings.chatbotWelcomeMessage ?? "¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.",
-        whatsappPhone:         settings.whatsappPhone ?? "56911223344",
-        productCategories:     (settings.productCategories as any) ?? [
-          { slug: "ropa_organica", name: "Ropa Orgánica" },
-          { slug: "delantales",    name: "Delantales" },
-          { slug: "pantalones",    name: "Pantalones" },
-          { slug: "accesorios",    name: "Accesorios" },
-          { slug: "kits",          name: "Kits Creativos" },
-        ],
-      }}
-      envVars={envVars}
-    />
+    <div className="space-y-8">
+      <ConfigForm
+        initialSettings={{
+          foundationName:        settings.foundationName,
+          tagline:               settings.tagline,
+          contactEmail:          settings.contactEmail,
+          contactPhone:          settings.contactPhone ?? "",
+          address:               settings.address ?? "",
+          schedule:              settings.schedule ?? "",
+          rut:                   settings.rut ?? "",
+          legalPersonId:         settings.legalPersonId ?? "",
+          instagramUrl:          settings.instagramUrl ?? "",
+          facebookUrl:           settings.facebookUrl ?? "",
+          youtubeUrl:            settings.youtubeUrl ?? "",
+          donationsEmail:        settings.donationsEmail,
+          volunteeringEmail:     settings.volunteeringEmail,
+          flowApiKey:            settings.flowApiKey ?? "",
+          flowSecretKey:         settings.flowSecretKey ?? "",
+          flowEnvironment:       settings.flowEnvironment ?? "sandbox",
+          transbankCommerceCode: settings.transbankCommerceCode ?? "",
+          transbankApiKey:       settings.transbankApiKey ?? "",
+          transbankEnvironment:  settings.transbankEnvironment ?? "integration",
+          resendApiKey:          settings.resendApiKey ?? "",
+          cloudinaryCloudName:   settings.cloudinaryCloudName ?? "",
+          cloudinaryApiKey:      settings.cloudinaryApiKey ?? "",
+          cloudinaryApiSecret:   settings.cloudinaryApiSecret ?? "",
+          transparencyDocs:      (settings.transparencyDocs as any) ?? [
+            { id: "1", title: "Memoria Anual 2024", type: "PDF", size: "2.4 MB", date: "Marzo 2025", url: "" },
+            { id: "2", title: "Balance Financiero Auditado 2024", type: "PDF", size: "1.1 MB", date: "Febrero 2025", url: "" },
+            { id: "3", title: "Certificado de Personalidad Jurídica", type: "PDF", size: "0.5 MB", date: "Vigente", url: "" },
+            { id: "4", title: "Estatutos de la Fundación", type: "PDF", size: "3.2 MB", date: "Actualizado 2024", url: "" },
+          ],
+          chatbotEnabled:        settings.chatbotEnabled ?? true,
+          chatbotWelcomeMessage: settings.chatbotWelcomeMessage ?? "¡Hola! 🌼 Soy el asistente virtual de Fundación Kidspeque. ¿En qué puedo orientarte hoy? Selecciona una opción rápida o escríbeme directamente.",
+          whatsappPhone:         settings.whatsappPhone ?? "56911223344",
+          productCategories:     (settings.productCategories as any) ?? [
+            { slug: "ropa_organica", name: "Ropa Orgánica" },
+            { slug: "delantales",    name: "Delantales" },
+            { slug: "pantalones",    name: "Pantalones" },
+            { slug: "accesorios",    name: "Accesorios" },
+            { slug: "kits",          name: "Kits Creativos" },
+          ],
+        }}
+        envVars={envVars}
+      />
+
+      {/* Cambio de clave del admin */}
+      <div className="px-6 lg:px-8 pb-8 max-w-lg">
+        <PasswordChangeForm />
+      </div>
+    </div>
   );
 }

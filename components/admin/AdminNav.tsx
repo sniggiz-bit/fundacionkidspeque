@@ -10,11 +10,12 @@ import Link       from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Heart, ShoppingBag,
-  Users, Star, Settings, ExternalLink, LogOut,
+  Users, Star, Settings, ExternalLink, LogOut, LayoutTemplate,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin",               label: "Dashboard",     icon: LayoutDashboard },
+  { href: "/admin/hero",          label: "Hero",          icon: LayoutTemplate  },
   { href: "/admin/suenos",        label: "Sueños",        icon: Star            },
   { href: "/admin/donaciones",    label: "Donaciones",    icon: Heart           },
   { href: "/admin/productos",     label: "Productos",     icon: ShoppingBag     },
