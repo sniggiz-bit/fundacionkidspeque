@@ -7,6 +7,8 @@ import { DonationWizard } from "@/components/DonationWizard";
 import { StoreSection }   from "@/components/StoreSection";
 import { Footer }         from "@/components/Footer";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Inicio | Fundación Kidspeque",
   description:

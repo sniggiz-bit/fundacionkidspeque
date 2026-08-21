@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import { db }            from "@/lib/db";
 import { LayoutTemplate } from "lucide-react";
 import { HeroEditorForm, type HeroSettings } from "@/components/admin/HeroEditorForm";
-import { getRealTimeHeroStats }               from "@/app/api/admin/hero/route";
+import { getRealTimeHeroStats, DEFAULT_HERO_SETTINGS } from "@/lib/hero";
 
 export const dynamic  = "force-dynamic";
 export const metadata: Metadata = { title: "Editor Hero" };
@@ -62,7 +62,7 @@ export default async function HeroEditorPage() {
   ]);
 
   const rawHero   = (settings.heroSettings ?? {}) as Record<string, unknown>;
-  const heroSettings: HeroSettings = { ...DEFAULT_HERO, ...rawHero };
+  const heroSettings: HeroSettings = { ...DEFAULT_HERO_SETTINGS, ...rawHero };
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
