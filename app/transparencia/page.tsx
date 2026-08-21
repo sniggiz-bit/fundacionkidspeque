@@ -5,9 +5,44 @@ import { FileText, Download, PieChart, ShieldCheck, Heart, Users } from "lucide-
 import { db } from "@/lib/db";
 import { unstable_noStore as noStore } from "next/cache";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
 export const metadata: Metadata = {
-  title: "Transparencia | Fundación Kidspeque",
-  description: "Conoce en detalle cómo administramos los fondos, nuestros reportes financieros y el impacto real de cada donación.",
+  title: "Transparencia y Rendición de Cuentas | Fundación Kidspeque",
+  description:
+    "Conoce en detalle el uso transparente de fondos, memorias anuales, estatutos y estados financieros auditados de la Fundación Kidspeque.",
+  keywords: [
+    "transparencia fundacion kidspeque",
+    "memorias anuales fundacion chile",
+    "estados financieros kidspeque",
+    "estatutos fundacion ninos creativos",
+    "rendicion de cuentas donaciones",
+  ],
+  alternates: {
+    canonical: `${APP_URL}/transparencia`,
+  },
+  openGraph: {
+    title: "Transparencia y Rendición de Cuentas | Fundación Kidspeque",
+    description: "Revisa nuestros estados financieros, memorias anuales y documentos legales de forma pública.",
+    url: `${APP_URL}/transparencia`,
+    siteName: "Fundación Kidspeque",
+    locale: "es_CL",
+    type: "website",
+    images: [
+      {
+        url: `${APP_URL}/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: "Transparencia Fundación Kidspeque",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Transparencia y Rendición de Cuentas | Fundación Kidspeque",
+    description: "Estados financieros auditados y memorias anuales públicas.",
+    images: [`${APP_URL}/logo.png`],
+  },
 };
 
 export const dynamic = 'force-dynamic';
@@ -43,8 +78,26 @@ export default async function TransparenciaPage() {
     ? (settings.transparencyDocs as any)
     : defaultDocs;
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: "Transparencia y Rendición de Cuentas — Fundación Kidspeque",
+    url: `${APP_URL}/transparencia`,
+    description: "Información institucional, memorias anuales y balances auditados de la Fundación Kidspeque.",
+    mainEntity: {
+      "@type": "NGO",
+      name: "Fundación Social Niños Creativos",
+      url: APP_URL,
+      vatID: settings?.rut || "76.XXX.XXX-X",
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
 
       <main className="min-h-screen bg-neutral-50 pb-20">

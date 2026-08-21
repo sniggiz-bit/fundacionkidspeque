@@ -7,12 +7,46 @@ import { DonationWizard } from "@/components/DonationWizard";
 import { StoreSection }   from "@/components/StoreSection";
 import { Footer }         from "@/components/Footer";
 
-export const dynamic = 'force-dynamic';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
 
 export const metadata: Metadata = {
-  title: "Inicio | Fundación Kidspeque",
+  title: "Cumple el Sueño de Cada Niño y Niña de Chile | Fundación Kidspeque",
   description:
-    "Cumple un sueño para cada niño o niña de nuestro país. Dona, compra con propósito o únete como voluntario.",
+    "Apoyamos el desarrollo infantil en Chile a través de la creatividad y la libre expresión. Dona sin intermediarios, compra en nuestra tienda solidaria o únete como voluntario.",
+  keywords: [
+    "fundacion niños chile",
+    "cumplir sueños niños chile",
+    "donar niños chile",
+    "tienda solidaria chile",
+    "crowdfunding social niños",
+    "voluntariado infantil santiago",
+  ],
+  alternates: {
+    canonical: `${APP_URL}`,
+  },
+  openGraph: {
+    title: "Cumple el Sueño de Cada Niño y Niña de Chile | Fundación Kidspeque",
+    description:
+      "Tu donación llega directamente al sueño de un niño o niña en Chile, sin intermediarios. Plataforma social de impacto.",
+    url: `${APP_URL}`,
+    siteName: "Fundación Kidspeque",
+    locale: "es_CL",
+    type: "website",
+    images: [
+      {
+        url: `${APP_URL}/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: "Fundación Kidspeque — Plataforma Social de Impacto",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cumple el Sueño de Cada Niño y Niña de Chile | Fundación Kidspeque",
+    description: "Plataforma social de impacto. Dona hoy sin intermediarios.",
+    images: [`${APP_URL}/logo.png`],
+  },
 };
 
 export default async function HomePage() {
@@ -37,8 +71,25 @@ export default async function HomePage() {
     progressPercentage: d.progressPct
   }));
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Sueños destacados en Fundación Kidspeque",
+    itemListElement: dreams.map((d, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: d.title,
+      description: d.shortDescription,
+      url: `${APP_URL}/suenos/${d.slug}`,
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
 
       <main id="main-content">

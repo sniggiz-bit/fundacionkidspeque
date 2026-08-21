@@ -13,19 +13,48 @@ interface Props {
   params: { slug: string };
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await db.product.findUnique({
     where: { slug: params.slug },
   });
 
-  if (!product) return { title: "Producto no encontrado" };
+  if (!product) return { title: "Producto no encontrado | Tienda Solidaria Kidspeque" };
+
+  const images = (product.images as Array<{ url: string; alt: string }>) ?? [];
+  const primaryImage = images[0]?.url ?? `${APP_URL}/logo.png`;
+  const title = product.metaTitle || `${product.name} | Tienda Solidaria Kidspeque`;
+  const description = product.metaDescription || product.shortDescription;
+  const url = `${APP_URL}/tienda/productos/${params.slug}`;
 
   return {
-    title: product.metaTitle || `${product.name} | Tienda Solidaria Kidspeque`,
-    description: product.metaDescription || product.shortDescription,
+    title,
+    description,
+    keywords: [
+      product.name,
+      product.category.replace("_", " "),
+      "tienda solidaria chile",
+      "ropa organica niños",
+      "fundacion kidspeque",
+    ],
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
-      title: product.metaTitle || product.name,
-      description: product.metaDescription || product.shortDescription,
+      title,
+      description,
+      url,
+      siteName: "Fundación Kidspeque",
+      locale: "es_CL",
+      type: "website",
+      images: [{ url: primaryImage, alt: product.name }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [primaryImage],
     },
   };
 }
@@ -40,10 +69,71 @@ export default async function ProductPage({ params }: Props) {
     notFound();
   }
 
-  const images = product.images as Array<{ url: string; alt: string; isPrimary: boolean }>;
-  
+  const images = (product.images as Array<{ url: string; alt: string; isPrimary: boolean }>) ?? [];
+  const primaryImage = images.find((img) => img.isPrimary)?.url || images[0]?.url || `${APP_URL}/logo.png`;
+  const minPrice = product.variants.length > 0
+    ? Math.min(...product.variants.map((v) => Number(v.price ?? product.price)))
+    : Number(product.price);
+
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Product",
+        name: product.name,
+        image: images.map((i) => i.url),
+        description: product.shortDescription,
+        sku: product.sku || product.id,
+        brand: {
+          "@type": "Brand",
+          name: "Fundación Kidspeque",
+        },
+        offers: {
+          "@type": "Offer",
+          url: `${APP_URL}/tienda/productos/${product.slug}`,
+          priceCurrency: "CLP",
+          price: minPrice,
+          availability: product.variants.some((v) => v.stock > 0)
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          seller: {
+            "@type": "NGO",
+            name: "Fundación Social Niños Creativos",
+          },
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Inicio",
+            item: APP_URL,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Tienda",
+            item: `${APP_URL}/tienda`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: product.name,
+            item: `${APP_URL}/tienda/productos/${product.slug}`,
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <Navbar />
       <CartDrawer />
       

@@ -14,9 +14,45 @@ import { Heart, Clock, Users, Search } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
 export const metadata: Metadata = {
-  title:       "Sueños que Importan | Fundación Kidspeque",
-  description: "Conoce las historias de niños y niñas que necesitan tu ayuda para cumplir sus sueños. Dona hoy y cambia una vida.",
+  title: "Sueños que Importan — Campañas de Donación Infantil | Fundación Kidspeque",
+  description:
+    "Conoce las historias reales de niños y niñas en Chile que necesitan tu apoyo para cumplir sus sueños creativos, educativos y artísticos. Dona de forma 100% segura y directa.",
+  keywords: [
+    "sueños niños chile",
+    "campañas de donación niños",
+    "donar arte niños",
+    "donar música niños",
+    "donar deporte niños",
+    "fundacion kidspeque sueños",
+  ],
+  alternates: {
+    canonical: `${APP_URL}/suenos`,
+  },
+  openGraph: {
+    title: "Sueños que Importan | Fundación Kidspeque",
+    description: "Conoce y apoya los sueños de niños y niñas en Chile. Tu donación va directo sin intermediarios.",
+    url: `${APP_URL}/suenos`,
+    siteName: "Fundación Kidspeque",
+    locale: "es_CL",
+    type: "website",
+    images: [
+      {
+        url: `${APP_URL}/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: "Sueños que Importan — Fundación Kidspeque",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sueños que Importan | Fundación Kidspeque",
+    description: "Conoce y apoya los sueños de niños y niñas en Chile.",
+    images: [`${APP_URL}/logo.png`],
+  },
 };
 
 function fCLP(n: bigint | number) {
@@ -71,8 +107,29 @@ export default async function SuenosPage({
 
   const totalPages = Math.ceil(total / limit);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Sueños que Importan — Fundación Kidspeque",
+    url: `${APP_URL}/suenos`,
+    description: "Catálogo de campañas activas para cumplir sueños de niños y niñas en Chile.",
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: dreams.map((dream, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: dream.title,
+        url: `${APP_URL}/suenos/${dream.slug}`,
+      })),
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <main>
 

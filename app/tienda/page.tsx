@@ -14,12 +14,44 @@ import { StoreCatalog }  from "@/components/StoreCatalog";
 import { db }            from "@/lib/db";
 import { Leaf, Shield, Truck, RotateCcw } from "lucide-react";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
 export const metadata: Metadata = {
-  title:       "Tienda Solidaria | Fundación Kidspeque",
-  description: "Compra ropa y productos creativos para niños. El 100% del beneficio financia los sueños de la fundación.",
+  title: "Tienda Solidaria — Ropa Orgánica y Productos Creativos | Fundación Kidspeque",
+  description:
+    "Descubre ropa orgánica infantil, delantales, accesorios y kits creativos en la tienda de la Fundación Kidspeque. El 100% de los fondos va directo a los niños.",
+  keywords: [
+    "tienda solidaria chile",
+    "ropa organica niños chile",
+    "delantales escolares chile",
+    "comprar con proposito chile",
+    "kits creativos niños",
+    "fundacion kidspeque tienda",
+  ],
+  alternates: {
+    canonical: `${APP_URL}/tienda`,
+  },
   openGraph: {
-    title:       "Tienda Solidaria Kidspeque — Compra con propósito",
-    description: "Ropa orgánica, delantales y más. 100% del beneficio va a los niños.",
+    title: "Tienda Solidaria Kidspeque — Compra con propósito",
+    description: "Ropa orgánica, delantales y kits creativos. El 100% del beneficio financia los sueños de niños y niñas.",
+    url: `${APP_URL}/tienda`,
+    siteName: "Fundación Kidspeque",
+    locale: "es_CL",
+    type: "website",
+    images: [
+      {
+        url: `${APP_URL}/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: "Tienda Solidaria Fundación Kidspeque",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tienda Solidaria Kidspeque — Compra con propósito",
+    description: "Ropa orgánica y productos creativos con 100% beneficio para los niños.",
+    images: [`${APP_URL}/logo.png`],
   },
 };
 
@@ -49,8 +81,29 @@ const TRUST_BADGES = [
 export default async function TiendaPage() {
   const products = await getProducts();
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Tienda Solidaria Fundación Kidspeque",
+    url: `${APP_URL}/tienda`,
+    description: "Catálogo de productos solidarios: ropa orgánica, delantales y kits creativos.",
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: products.map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: p.name,
+        url: `${APP_URL}/tienda/productos/${p.slug}`,
+      })),
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <CartDrawer />
 

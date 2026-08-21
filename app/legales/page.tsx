@@ -3,9 +3,43 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Shield, FileText, Cookie } from "lucide-react";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
 export const metadata: Metadata = {
-  title: "Políticas y Aspectos Legales | Fundación Kidspeque",
-  description: "Conoce nuestras políticas de privacidad, términos de servicio y uso de cookies.",
+  title: "Términos de Servicio, Privacidad y Cookies | Fundación Kidspeque",
+  description:
+    "Consulta nuestras políticas de privacidad (Ley 19.628), términos de servicio, política de cookies y aspectos legales de la Fundación Kidspeque.",
+  keywords: [
+    "politica privacidad fundacion kidspeque",
+    "terminos de servicio kidspeque",
+    "proteccion de datos donantes chile",
+    "cookies fundacion kidspeque",
+  ],
+  alternates: {
+    canonical: `${APP_URL}/legales`,
+  },
+  openGraph: {
+    title: "Términos de Servicio, Privacidad y Cookies | Fundación Kidspeque",
+    description: "Conoce nuestras políticas legales y cómo resguardamos la seguridad de donantes y niños.",
+    url: `${APP_URL}/legales`,
+    siteName: "Fundación Kidspeque",
+    locale: "es_CL",
+    type: "website",
+    images: [
+      {
+        url: `${APP_URL}/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: "Centro Legal Fundación Kidspeque",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Términos de Servicio, Privacidad y Cookies | Fundación Kidspeque",
+    description: "Términos de servicio y políticas de privacidad.",
+    images: [`${APP_URL}/logo.png`],
+  },
 };
 
 export default function LegalesPage() {

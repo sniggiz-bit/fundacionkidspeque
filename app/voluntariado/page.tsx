@@ -11,12 +11,43 @@ import { Navbar }           from "@/components/Navbar";
 import { Footer }           from "@/components/Footer";
 import { Heart, Shield, Users, Star } from "lucide-react";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
 export const metadata: Metadata = {
-  title:       "Voluntariado | Fundación Kidspeque",
-  description: "Únete a la red de voluntarios, profesionales y artistas de la Fundación Social Niños Creativos. Regístrate y cambia vidas.",
+  title: "Programa de Voluntariado y Colaboradores | Fundación Kidspeque",
+  description:
+    "Únete como psicólogo, terapeuta, trabajador social, artista o voluntario a la Fundación Kidspeque en Chile. Regístrate y ayuda a transformar vidas infantiles.",
+  keywords: [
+    "voluntariado infantil chile",
+    "voluntario fundacion niños santiago",
+    "psicologos voluntarios chile",
+    "artistas voluntarios fundacion",
+    "fundacion kidspeque voluntariado",
+  ],
+  alternates: {
+    canonical: `${APP_URL}/voluntariado`,
+  },
   openGraph: {
-    title:       "Únete al voluntariado de Fundación Kidspeque",
-    description: "Psicólogos, artistas y voluntarios que cambian vidas a través de la creatividad infantil.",
+    title: "Programa de Voluntariado | Fundación Kidspeque",
+    description: "Psicólogos, artistas, terapeutas y voluntarios que transforman vidas a través de la creatividad.",
+    url: `${APP_URL}/voluntariado`,
+    siteName: "Fundación Kidspeque",
+    locale: "es_CL",
+    type: "website",
+    images: [
+      {
+        url: `${APP_URL}/logo.png`,
+        width: 1200,
+        height: 630,
+        alt: "Voluntariado Fundación Kidspeque",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Programa de Voluntariado | Fundación Kidspeque",
+    description: "Súmate a nuestra red de voluntarios y profesionales en Chile.",
+    images: [`${APP_URL}/logo.png`],
   },
 };
 

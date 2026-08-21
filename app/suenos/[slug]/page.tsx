@@ -42,30 +42,47 @@ export async function generateStaticParams() {
   }
 }
 
-// ── Metadatos dinámicos ───────────────────────────────────────────────────────
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const dream = await db.dream.findUnique({
     where:  { slug: params.slug },
-    select: { title: true, shortDescription: true, coverImage: true, metaTitle: true, metaDescription: true },
+    select: { title: true, shortDescription: true, coverImage: true, metaTitle: true, metaDescription: true, childName: true },
   });
 
   if (!dream) return { title: "Sueño no encontrado | Fundación Kidspeque" };
 
   const cover = dream.coverImage as { url: string; alt: string };
+  const title = dream.metaTitle ?? `${dream.title} | Sueño de ${dream.childName} en Fundación Kidspeque`;
+  const description = dream.metaDescription ?? dream.shortDescription;
+  const url = `${APP_URL}/suenos/${params.slug}`;
 
   return {
-    title:       dream.metaTitle ?? dream.title,
-    description: dream.metaDescription ?? dream.shortDescription,
-    openGraph: {
-      title:       dream.metaTitle ?? dream.title,
-      description: dream.metaDescription ?? dream.shortDescription,
-      images:      [{ url: cover.url, alt: cover.alt, width: 1200, height: 630 }],
+    title,
+    description,
+    keywords: [
+      `sueño ${dream.childName}`,
+      dream.title,
+      "donar sueño niño chile",
+      "fundacion kidspeque",
+    ],
+    alternates: {
+      canonical: url,
     },
-    // Schema.org Donation Campaign
-    other: {
-      "schema:type": "DonateAction",
-      "schema:name": dream.title,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "Fundación Kidspeque",
+      locale: "es_CL",
+      type: "article",
+      images: [{ url: cover.url, alt: cover.alt || dream.title, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [cover.url],
     },
   };
 }
@@ -135,24 +152,55 @@ export default async function DreamPage({ params }: PageProps) {
   const progressPct = Number(dream.progressPct);
   const isFunded   = dream.status === "funded" || dream.status === "completed";
 
-  // Schema.org JSON-LD para la campaña
+  // Schema.org JSON-LD para la campaña + BreadcrumbList
   const schemaData = {
-    "@context":   "https://schema.org",
-    "@type":      "DonateAction",
-    name:         dream.title,
-    description:  dream.shortDescription,
-    url:          `https://www.kidspeque.cl/suenos/${dream.slug}`,
-    image:        cover.url,
-    recipient: {
-      "@type": "NGO",
-      name:    "Fundación Social Niños Creativos",
-      url:     "https://www.kidspeque.cl",
-    },
-    startTime:    dream.publishedAt?.toISOString(),
-    endTime:      dream.deadline?.toISOString(),
-    actionStatus: isFunded
-      ? "https://schema.org/CompletedActionStatus"
-      : "https://schema.org/ActiveActionStatus",
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "DonateAction",
+        name: dream.title,
+        description: dream.shortDescription,
+        url: `${APP_URL}/suenos/${dream.slug}`,
+        image: cover.url,
+        recipient: {
+          "@type": "NGO",
+          name: "Fundación Social Niños Creativos",
+          url: APP_URL,
+        },
+        agent: {
+          "@type": "Person",
+          name: `${dream.childName} (${dream.childAge} años)`,
+        },
+        startTime: dream.publishedAt?.toISOString(),
+        endTime: dream.deadline?.toISOString(),
+        actionStatus: isFunded
+          ? "https://schema.org/CompletedActionStatus"
+          : "https://schema.org/ActiveActionStatus",
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Inicio",
+            item: APP_URL,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Sueños",
+            item: `${APP_URL}/suenos`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: dream.title,
+            item: `${APP_URL}/suenos/${dream.slug}`,
+          },
+        ],
+      },
+    ],
   };
 
   return (

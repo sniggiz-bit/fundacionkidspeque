@@ -17,63 +17,81 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-// ── Metadatos SEO ─────────────────────────────────────────────────────────────
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
+
+// ── Metadatos SEO Globales ────────────────────────────────────────────────────
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.kidspeque.cl"),
+  metadataBase: new URL(APP_URL),
   title: {
-    default: "Fundación Kidspeque",
+    default: "Fundación Kidspeque | Cumple el sueño de cada niño y niña de Chile",
     template: "%s | Fundación Kidspeque",
   },
   description:
-    "Cumple un sueño para cada niño o niña de nuestro país. Apoyamos el desarrollo infantil a través de la creatividad y la libertad de expresión.",
+    "Plataforma social de impacto en Chile. Financiamo sueños de niños y niñas a través de la creatividad, expresión artística y donaciones transparentes sin intermediarios.",
   keywords: [
-    "fundación", "niños creativos", "donación Chile", "crowdfunding social",
-    "kidspeque", "sueños niños", "voluntariado", "tienda solidaria",
+    "fundacion niños chile",
+    "fundacion kidspeque",
+    "donaciones niños chile",
+    "cumplir sueños niños",
+    "crowdfunding social chile",
+    "niños creativos",
+    "voluntariado infantil chile",
+    "tienda solidaria chile",
+    "transparencia donaciones",
   ],
-  authors: [{ name: "Fundación Social Niños Creativos", url: "https://www.kidspeque.cl" }],
+  authors: [{ name: "Fundación Social Niños Creativos", url: APP_URL }],
   creator: "Fundación Kidspeque",
   publisher: "Fundación Social Niños Creativos",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  alternates: {
+    canonical: "./",
+  },
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   openGraph: {
     type: "website",
     locale: "es_CL",
-    url: "https://www.kidspeque.cl",
+    url: APP_URL,
     siteName: "Fundación Kidspeque",
-    title: "Fundación Kidspeque | Cumple un sueño para cada niño o niña",
+    title: "Fundación Kidspeque | Cumple el sueño de cada niño y niña de Chile",
     description:
-      "Plataforma de crowdfunding social que financia sueños de niños y niñas a través de donaciones y nuestra tienda solidaria.",
+      "Plataforma social de impacto que apoya el desarrollo infantil a través de la creatividad. Tu donación llega directamente al sueño de un niño o niña.",
     images: [
       {
-        url: "/og-image.jpg",
+        url: `${APP_URL}/logo.png`,
         width: 1200,
         height: 630,
-        alt: "Fundación Kidspeque",
+        alt: "Fundación Kidspeque — Cumpliendo sueños de niños y niñas en Chile",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fundación Kidspeque | Cumple un sueño para cada niño o niña",
-    description: "Plataforma de crowdfunding social para niños y niñas de Chile.",
-    images: ["/og-image.jpg"],
+    title: "Fundación Kidspeque | Cumple el sueño de cada niño y niña de Chile",
+    description: "Plataforma social de impacto que financia sueños de niños y niñas en Chile.",
+    images: [`${APP_URL}/logo.png`],
     creator: "@kidspeque_cl",
+    site: "@kidspeque_cl",
   },
   icons: {
-    icon:        [{ url: "/favicon.ico" }, { url: "/icon.svg", type: "image/svg+xml" }],
-    apple:       [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
-    shortcut:    "/favicon.ico",
+    icon: [{ url: "/logo.png" }],
+    apple: [{ url: "/logo.png", sizes: "180x180" }],
+    shortcut: "/logo.png",
   },
-  manifest: "/site.webmanifest",
-  // Schema.org para NGO (datos estructurados)
-  other: {
-    "schema:type": "NGO",
-    "schema:name": "Fundación Social Niños Creativos",
-    "schema:url":  "https://www.kidspeque.cl",
-  },
+  category: "Nonprofit & Charity",
 };
 
 export const viewport: Viewport = {
@@ -92,48 +110,80 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Schema.org JSON-LD para Organización (NGO) + WebSite con SearchAction
+  const ngoJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "NGO",
+        "@id": `${APP_URL}/#organization`,
+        name: "Fundación Social Niños Creativos",
+        alternateName: ["Fundación Kidspeque", "Kidspeque Chile"],
+        url: APP_URL,
+        logo: {
+          "@type": "ImageObject",
+          url: `${APP_URL}/logo.png`,
+          caption: "Logo Fundación Kidspeque",
+        },
+        image: `${APP_URL}/logo.png`,
+        description:
+          "Organización sin fines de lucro en Chile dedicada a financiar sueños creativos, educativos y artísticos para niños y niñas.",
+        foundingDate: "2024",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "Santiago",
+          addressRegion: "Región Metropolitana",
+          addressCountry: "CL",
+        },
+        areaServed: {
+          "@type": "Country",
+          name: "Chile",
+        },
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "Atención al Donante y Voluntarios",
+          email: "contacto@kidspeque.cl",
+          telephone: "+56-2-2345-6789",
+          availableLanguage: ["Spanish"],
+        },
+        sameAs: [
+          "https://www.instagram.com/kidspeque_cl",
+          "https://www.facebook.com/kidspeque",
+          "https://www.youtube.com/@kidspeque_cl",
+        ],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${APP_URL}/#website`,
+        url: APP_URL,
+        name: "Fundación Kidspeque",
+        description: "Cumple el sueño de cada niño y niña de Chile.",
+        publisher: {
+          "@id": `${APP_URL}/#organization`,
+        },
+        inLanguage: "es-CL",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${APP_URL}/suenos?category={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+
   return (
     <html
-      lang="es"
+      lang="es-CL"
       className={`${inter.variable} ${plusJakarta.variable}`}
       suppressHydrationWarning
     >
       <head>
-        {/* Schema.org JSON-LD — NGO / NonProfitOrganization */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "NGO",
-              name: "Fundación Social Niños Creativos",
-              alternateName: "Fundación Kidspeque",
-              url: "https://www.kidspeque.cl",
-              logo: "https://www.kidspeque.cl/logo.png",
-              description:
-                "Organización sin fines de lucro que apoya el desarrollo creativo de niños y niñas en Chile.",
-              foundingDate: "2024",
-              areaServed: {
-                "@type": "Country",
-                name: "Chile",
-              },
-              contactPoint: {
-                "@type": "ContactPoint",
-                contactType: "customer service",
-                availableLanguage: "Spanish",
-                hoursAvailable: {
-                  "@type": "OpeningHoursSpecification",
-                  dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"],
-                  opens: "09:00",
-                  closes: "17:00",
-                },
-              },
-              sameAs: [
-                "https://www.instagram.com/kidspeque_cl",
-                "https://www.facebook.com/kidspeque",
-              ],
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ngoJsonLd) }}
         />
       </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900">
