@@ -135,14 +135,37 @@ export async function PUT(request: NextRequest) {
 
   try {
     const dataToSave = { ...parsed.data } as any;
+
+    // Sanitizar claves y entornos removiendo espacios accidentales (.trim())
+    if (typeof dataToSave.flowApiKey === "string") {
+      dataToSave.flowApiKey = dataToSave.flowApiKey.trim();
+    }
+    if (typeof dataToSave.flowSecretKey === "string") {
+      dataToSave.flowSecretKey = dataToSave.flowSecretKey.trim();
+    }
+    if (typeof dataToSave.flowEnvironment === "string") {
+      dataToSave.flowEnvironment = dataToSave.flowEnvironment.trim().toLowerCase();
+    }
+    if (typeof dataToSave.transbankCommerceCode === "string") {
+      dataToSave.transbankCommerceCode = dataToSave.transbankCommerceCode.trim();
+    }
+    if (typeof dataToSave.transbankApiKey === "string") {
+      dataToSave.transbankApiKey = dataToSave.transbankApiKey.trim();
+    }
+    if (typeof dataToSave.transbankEnvironment === "string") {
+      dataToSave.transbankEnvironment = dataToSave.transbankEnvironment.trim().toLowerCase();
+    }
+
     const settings = await db.siteSettings.upsert({
       where:  { id: "global" },
       create: { id: "global", ...dataToSave },
       update: dataToSave,
     });
 
-    // Invalidad la caché del sitio público inmediatamente (revalida el layout global)
+    // Invalidar caché de rutas relevantes
     revalidatePath("/", "layout");
+    revalidatePath("/admin/configuracion", "page");
+    revalidatePath("/donacion", "layout");
 
     return NextResponse.json({ success: true, data: settings });
   } catch (err) {

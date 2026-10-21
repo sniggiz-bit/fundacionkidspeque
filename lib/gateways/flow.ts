@@ -8,31 +8,81 @@
 
 import crypto from "crypto";
 import { db } from "@/lib/db";
+import { unstable_noStore as noStore } from "next/cache";
+
+function isValidKey(val?: string | null): boolean {
+  if (!val || typeof val !== "string") return false;
+  const trimmed = val.trim();
+  if (trimmed.length < 5) return false;
+  const lower = trimmed.toLowerCase();
+  const placeholders = ["tu_", "placeholder", "xxxx", "cambiar", "change_", "example"];
+  return !placeholders.some((p) => lower.includes(p));
+}
 
 async function getFlowConfig() {
-  let apiKey = process.env.FLOW_API_KEY ?? "";
-  let secretKey = process.env.FLOW_SECRET_KEY ?? "";
-  let env = process.env.FLOW_ENVIRONMENT ?? "sandbox";
+  try {
+    noStore();
+  } catch {
+    // Silenciar si se ejecuta fuera del contexto de petición de Next.js
+  }
 
-  // Si env es placeholder o vacía, buscar en DB
-  const isPlaceholder = (val: string) => !val || val.includes("tu_") || val.includes("placeholder");
+  let apiKey = "";
+  let secretKey = "";
+  let env = "";
+  let source = "none";
 
-  if (isPlaceholder(apiKey) || isPlaceholder(secretKey)) {
-    try {
-      const settings = await db.siteSettings.findUnique({ where: { id: "global" } });
-      if (settings?.flowApiKey) apiKey = settings.flowApiKey;
-      if (settings?.flowSecretKey) secretKey = settings.flowSecretKey;
-      if (settings?.flowEnvironment) env = settings.flowEnvironment;
-    } catch (err) {
-      console.error("[flow] Error al consultar DB para llaves:", err);
+  // 1. PRIORIDAD MÁXIMA: Base de datos (SiteSettings id="global")
+  try {
+    const settings = await db.siteSettings.findUnique({
+      where: { id: "global" },
+      select: {
+        flowApiKey: true,
+        flowSecretKey: true,
+        flowEnvironment: true,
+      },
+    });
+
+    if (settings) {
+      if (isValidKey(settings.flowApiKey)) {
+        apiKey = settings.flowApiKey!.trim();
+      }
+      if (isValidKey(settings.flowSecretKey)) {
+        secretKey = settings.flowSecretKey!.trim();
+      }
+      if (settings.flowEnvironment) {
+        const dbEnv = settings.flowEnvironment.trim().toLowerCase();
+        if (dbEnv === "production" || dbEnv === "sandbox") {
+          env = dbEnv;
+        }
+      }
+      if (apiKey && secretKey) {
+        source = "database";
+      }
     }
+  } catch (err) {
+    console.error("[flow] Error al consultar DB para llaves:", err);
+  }
+
+  // 2. FALLBACK: Si no hay llaves válidas en la DB, recurrir a variables de entorno (process.env)
+  if (!apiKey && isValidKey(process.env.FLOW_API_KEY)) {
+    apiKey = process.env.FLOW_API_KEY!.trim();
+    source = "env";
+  }
+  if (!secretKey && isValidKey(process.env.FLOW_SECRET_KEY)) {
+    secretKey = process.env.FLOW_SECRET_KEY!.trim();
+  }
+  if (!env) {
+    const rawEnv = (process.env.FLOW_ENVIRONMENT ?? "").trim().toLowerCase();
+    env = rawEnv === "production" ? "production" : "sandbox";
   }
 
   const baseUrl = env === "production"
     ? "https://www.flow.cl/api"
     : "https://sandbox.flow.cl/api";
 
-  return { apiKey, secretKey, baseUrl };
+  console.log(`[flow] Configuración Flow cargada desde [${source}] | Entorno: ${env} | BaseUrl: ${baseUrl}`);
+
+  return { apiKey, secretKey, baseUrl, env };
 }
 
 function signParams(params: Record<string, string>, secretKey: string): string {
@@ -90,12 +140,12 @@ export interface FlowStatusResponse {
 export async function createFlowPayment(req: FlowPaymentRequest): Promise<{ redirectUrl: string; token: string; flowOrder: number }> {
   const { apiKey, secretKey, baseUrl } = await getFlowConfig();
 
-  if (!apiKey || apiKey.includes("tu_") || apiKey.includes("placeholder")) {
-    throw new Error("Flow.cl no está configurado (falta FLOW_API_KEY en variables de entorno o panel admin).");
+  if (!isValidKey(apiKey)) {
+    throw new Error("Flow.cl no está configurado (falta FLOW_API_KEY válida en el panel admin o .env).");
   }
 
-  if (!secretKey || secretKey.includes("tu_") || secretKey.includes("placeholder")) {
-    throw new Error("Flow.cl no está configurado (falta FLOW_SECRET_KEY en variables de entorno o panel admin).");
+  if (!isValidKey(secretKey)) {
+    throw new Error("Flow.cl no está configurado (falta FLOW_SECRET_KEY válida en el panel admin o .env).");
   }
 
   // Sanitizar asunto: remover saltos de línea y caracteres problemáticos para la firma
@@ -124,6 +174,7 @@ export async function createFlowPayment(req: FlowPaymentRequest): Promise<{ redi
     method:  "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body:    body.toString(),
+    cache:   "no-store",
   });
 
   const json = await res.json().catch(() => null);
@@ -145,12 +196,17 @@ export async function createFlowPayment(req: FlowPaymentRequest): Promise<{ redi
 export async function getFlowPaymentStatus(token: string): Promise<FlowStatusResponse> {
   const { apiKey, secretKey, baseUrl } = await getFlowConfig();
 
+  if (!isValidKey(apiKey) || !isValidKey(secretKey)) {
+    throw new Error("Flow.cl no está configurado para consultar estado de pago.");
+  }
+
   const params: Record<string, string> = { apiKey, token };
   const signature = signParams(params, secretKey);
   const query     = new URLSearchParams({ ...params, s: signature }).toString();
 
   const res = await fetch(`${baseUrl}/payment/getStatus?${query}`, {
     method: "GET",
+    cache:  "no-store",
   });
 
   const json = await res.json().catch(() => null);
