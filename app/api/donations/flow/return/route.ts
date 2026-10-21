@@ -1,41 +1,57 @@
 export const dynamic = 'force-dynamic';
 /**
- * GET /api/donations/flow/return
+ * /api/donations/flow/return
  * ─────────────────────────────────────────────────────────────────
  * Ruta de retorno del usuario después de pagar en el portal de Flow.
- * Flow redirige al usuario aquí con el token como query param.
+ * Flow redirige al usuario aquí con el token vía GET o POST.
  *
- * Esta ruta verifica el estado y redirige al usuario a la página correcta.
- * NO procesa el pago (eso lo hace el webhook /confirm).
+ * Esta ruta verifica el estado y redirige al usuario a la página de confirmación.
+ * NO procesa el pago de forma definitiva (eso lo hace el webhook /confirm con idempotencia).
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getFlowPaymentStatus, isFlowApproved } from "@/lib/gateways/flow";
+import { getFlowPaymentStatus } from "@/lib/gateways/flow";
+import { db } from "@/lib/db";
 
-export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get("token");
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
+async function handleReturn(token: string | null) {
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001").replace(/\/$/, "");
 
   if (!token) {
-    return NextResponse.redirect(`${baseUrl}/donacion/error?reason=no_token`);
+    return NextResponse.redirect(`${baseUrl}/donacion/confirmacion`);
   }
 
   try {
     const flowStatus = await getFlowPaymentStatus(token);
+    const donation = await db.donation.findFirst({
+      where: {
+        gateway: "flow",
+        OR: [
+          { gatewayOrderId: flowStatus.commerceOrder },
+          { gatewayTransactionId: token },
+        ],
+      },
+      select: { id: true },
+    });
 
-    if (isFlowApproved(flowStatus)) {
-      // Pago exitoso — redirigir a página de gracias
-      return NextResponse.redirect(
-        `${baseUrl}/donacion/gracias?commerceOrder=${flowStatus.commerceOrder}&gateway=flow`
-      );
-    } else {
-      // Pago rechazado o cancelado
-      return NextResponse.redirect(
-        `${baseUrl}/donacion/error?reason=payment_rejected&commerceOrder=${flowStatus.commerceOrder}&gateway=flow`
-      );
-    }
+    const targetId = donation?.id;
+    return NextResponse.redirect(
+      targetId
+        ? `${baseUrl}/donacion/confirmacion?id=${targetId}`
+        : `${baseUrl}/donacion/confirmacion`
+    );
   } catch (err) {
-    console.error("[flow/return] Error verificando estado:", err);
-    return NextResponse.redirect(`${baseUrl}/donacion/error?reason=verification_error`);
+    console.error("[flow/return] Error al verificar retorno de Flow:", err);
+    return NextResponse.redirect(`${baseUrl}/donacion/confirmacion`);
   }
+}
+
+export async function GET(request: NextRequest) {
+  const token = request.nextUrl.searchParams.get("token");
+  return handleReturn(token);
+}
+
+export async function POST(request: NextRequest) {
+  const formData = await request.formData().catch(() => null);
+  const token = (formData?.get("token") as string) ?? request.nextUrl.searchParams.get("token");
+  return handleReturn(token);
 }

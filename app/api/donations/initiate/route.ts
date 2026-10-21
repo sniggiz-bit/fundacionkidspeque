@@ -55,15 +55,29 @@ function hashIp(ip: string): string {
 
 export async function POST(request: NextRequest) {
   // 1. Verificar origen CSRF
-  const origin  = request.headers.get("origin") ?? "";
-  const allowed = [
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001",
-    "https://www.kidspeque.cl",
+  const origin = request.headers.get("origin") ?? "";
+  const rawAppUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001").replace(/\/$/, "");
+
+  const allowedOrigins = new Set([
+    rawAppUrl,
+    "https://fundacionkidspeque.cl",
+    "https://www.fundacionkidspeque.cl",
     "https://kidspeque.cl",
-  ];
-  if (origin && !allowed.includes(origin)) {
+    "https://www.kidspeque.cl",
+    "http://localhost:3000",
+    "http://localhost:3001",
+  ]);
+
+  if (origin && !allowedOrigins.has(origin)) {
+    console.warn(`[donations/initiate] Origen no permitido: ${origin}`);
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN" } },
+      { 
+        success: false, 
+        error: { 
+          code: "FORBIDDEN", 
+          message: "Petición rechazada por validación de seguridad de dominio." 
+        } 
+      },
       { status: 403 }
     );
   }
@@ -72,14 +86,25 @@ export async function POST(request: NextRequest) {
   const body   = await request.json().catch(() => null);
   const parsed = initiateSchema.safeParse(body);
   if (!parsed.success) {
+    const firstError = Object.values(parsed.error.flatten().fieldErrors)[0]?.[0];
     return NextResponse.json(
-      { success: false, error: { code: "VALIDATION_ERROR", details: parsed.error.flatten().fieldErrors } },
+      { 
+        success: false, 
+        error: { 
+          code: "VALIDATION_ERROR", 
+          message: firstError ?? "Datos del formulario inválidos.",
+          details: parsed.error.flatten().fieldErrors 
+        } 
+      },
       { status: 422 }
     );
   }
 
   const data        = parsed.data;
-  const baseUrl     = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
+  let baseUrl       = rawAppUrl;
+  if (process.env.NODE_ENV === "production" && !baseUrl.startsWith("https://")) {
+    baseUrl = baseUrl.replace(/^http:\/\//, "https://");
+  }
   const ipRaw       = request.headers.get("x-forwarded-for") ?? "unknown";
   const ipHash      = hashIp(ipRaw);
 
@@ -100,15 +125,22 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // 4. Buscar el Dream por publicId
-  const dream = await db.dream.findUnique({
+  // 4. Buscar el Dream por publicId (o fallback al primer sueño activo)
+  let dream = await db.dream.findUnique({
     where:  { publicId: data.dreamId },
     select: { id: true, title: true, status: true },
   });
 
   if (!dream || dream.status !== "active") {
+    dream = await db.dream.findFirst({
+      where:  { status: "active" },
+      select: { id: true, title: true, status: true },
+    });
+  }
+
+  if (!dream) {
     return NextResponse.json(
-      { success: false, error: { code: "DREAM_NOT_ACTIVE", message: "Este sueño no está activo" } },
+      { success: false, error: { code: "DREAM_NOT_ACTIVE", message: "No hay campañas de sueños activas disponibles en este momento." } },
       { status: 400 }
     );
   }
@@ -166,7 +198,7 @@ export async function POST(request: NextRequest) {
 
       // ── Flow.cl ────────────────────────────────────────────────────────────
       case "flow": {
-        const returnUrl      = `${baseUrl}/donacion/confirmacion?id=${donationId}`;
+        const returnUrl      = `${baseUrl}/api/donations/flow/return`;
         const confirmUrl     = `${baseUrl}/api/donations/flow/confirm`;
 
         const result = await createFlowPayment({

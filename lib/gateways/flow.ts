@@ -90,16 +90,26 @@ export interface FlowStatusResponse {
 export async function createFlowPayment(req: FlowPaymentRequest): Promise<{ redirectUrl: string; token: string; flowOrder: number }> {
   const { apiKey, secretKey, baseUrl } = await getFlowConfig();
 
-  if (!apiKey || apiKey.includes("tu_")) {
-    throw new Error("Flow.cl no está configurado (falta API Key en el panel admin o .env).");
+  if (!apiKey || apiKey.includes("tu_") || apiKey.includes("placeholder")) {
+    throw new Error("Flow.cl no está configurado (falta FLOW_API_KEY en variables de entorno o panel admin).");
   }
+
+  if (!secretKey || secretKey.includes("tu_") || secretKey.includes("placeholder")) {
+    throw new Error("Flow.cl no está configurado (falta FLOW_SECRET_KEY en variables de entorno o panel admin).");
+  }
+
+  // Sanitizar asunto: remover saltos de línea y caracteres problemáticos para la firma
+  const cleanSubject = req.subject
+    .replace(/[^\w\s\u00C0-\u017F\-\.:]/gi, "")
+    .trim()
+    .slice(0, 250);
 
   const params: Record<string, string> = {
     commerceOrder:   req.commerceOrder,
-    subject:         req.subject,
+    subject:         cleanSubject,
     currency:        "CLP",
     amount:          String(Math.round(req.amount)),
-    email:           req.email,
+    email:           req.email.trim(),
     urlConfirmation: req.confirmationUrl,
     urlReturn:       req.returnUrl,
   };
@@ -116,11 +126,13 @@ export async function createFlowPayment(req: FlowPaymentRequest): Promise<{ redi
     body:    body.toString(),
   });
 
-  const json = await res.json();
+  const json = await res.json().catch(() => null);
 
-  if (!res.ok || json.code) {
-    console.error("[Flow createPayment error]", json);
-    throw new Error(`Flow API Error [${json.code}]: ${json.message}`);
+  if (!res.ok || !json || json.code || json.error) {
+    const errorCode = json?.code ?? json?.error?.code ?? res.status;
+    const errorMessage = json?.message ?? json?.error?.message ?? res.statusText ?? "Error desconocido de Flow";
+    console.error(`[Flow createPayment error HTTP ${res.status}]`, json);
+    throw new Error(`Flow API Error [${errorCode}]: ${errorMessage}`);
   }
 
   return {
@@ -141,11 +153,13 @@ export async function getFlowPaymentStatus(token: string): Promise<FlowStatusRes
     method: "GET",
   });
 
-  const json = await res.json();
+  const json = await res.json().catch(() => null);
 
-  if (!res.ok || json.code) {
-    console.error("[Flow getStatus error]", json);
-    throw new Error(`Flow getStatus Error [${json.code}]: ${json.message}`);
+  if (!res.ok || !json || json.code || json.error) {
+    const errorCode = json?.code ?? json?.error?.code ?? res.status;
+    const errorMessage = json?.message ?? json?.error?.message ?? res.statusText ?? "Error desconocido al obtener estado de Flow";
+    console.error(`[Flow getStatus error HTTP ${res.status}]`, json);
+    throw new Error(`Flow getStatus Error [${errorCode}]: ${errorMessage}`);
   }
 
   return json as FlowStatusResponse;

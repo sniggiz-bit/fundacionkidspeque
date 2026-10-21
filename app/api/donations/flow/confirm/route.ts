@@ -44,11 +44,15 @@ export async function POST(request: NextRequest) {
       amount:        flowStatus.amount,
     });
 
-    // Buscar donación por commerceOrder (= buyOrder que guardamos al iniciar el pago)
+    // Buscar donación por commerceOrder o token
     const donation = await db.donation.findFirst({
       where: {
-        gateway:             "flow",
-        gatewayTransactionId: flowStatus.commerceOrder,
+        gateway: "flow",
+        OR: [
+          { gatewayOrderId: flowStatus.commerceOrder },
+          { gatewayTransactionId: token },
+          { gatewayTransactionId: flowStatus.commerceOrder },
+        ],
       },
       select: { id: true, status: true },
     });

@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -110,6 +110,7 @@ interface Step1Props {
 function Step1Amount({ onNext, defaultValues }: Step1Props) {
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [availableDreams, setAvailableDreams] = useState<Array<{ publicId: string; title: string; childName: string }>>([]);
 
   const { handleSubmit, setValue, watch, formState: { errors } } = useForm<Step1Data>({
     resolver: zodResolver(step1Schema),
@@ -119,6 +120,20 @@ function Step1Amount({ onNext, defaultValues }: Step1Props) {
       isRecurring:  defaultValues?.isRecurring ?? false,
     },
   });
+
+  useEffect(() => {
+    if (!defaultValues?.dreamId) {
+      fetch("/api/dreams?status=active&limit=10")
+        .then((res) => res.json())
+        .then((json) => {
+          if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
+            setAvailableDreams(json.data);
+            setValue("dreamId", json.data[0].publicId);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [defaultValues?.dreamId, setValue]);
 
   const currentAmount = watch("amount");
 
@@ -139,25 +154,37 @@ function Step1Amount({ onNext, defaultValues }: Step1Props) {
     <form onSubmit={handleSubmit(onNext)} noValidate>
       <div className="space-y-6">
 
-        {/* Selector de sueño (simplificado) */}
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            ¿A qué sueño quieres donar?
-          </label>
-          <select
-            className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm
-                       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-                       bg-white text-neutral-800 transition-all"
-            onChange={(e) => setValue("dreamId", e.target.value)}
-            defaultValue="SUEÑO-0001"
-            aria-required
-          >
-            <option value="SUEÑO-0001">🎨 SUEÑO-0001 — El sueño de Valentina</option>
-            <option value="SUEÑO-0003">🎵 SUEÑO-0003 — El sueño de Isidora</option>
-            <option value="SUEÑO-0004">🤖 SUEÑO-0004 — El sueño de Diego</option>
-            <option value="SUEÑO-0005">💃 SUEÑO-0005 — El sueño de Camila</option>
-          </select>
-        </div>
+        {/* Selector de sueño */}
+        {!defaultValues?.dreamId && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              ¿A qué sueño quieres donar?
+            </label>
+            <select
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         bg-white text-neutral-800 transition-all"
+              onChange={(e) => setValue("dreamId", e.target.value)}
+              value={watch("dreamId")}
+              aria-required
+            >
+              {availableDreams.length > 0 ? (
+                availableDreams.map((d) => (
+                  <option key={d.publicId} value={d.publicId}>
+                    ✨ {d.childName} — {d.title}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="SUEÑO-0001">🎨 Valentina — El sueño de pintar</option>
+                  <option value="SUEÑO-0003">🎵 Isidora — Clases de música</option>
+                  <option value="SUEÑO-0004">🤖 Diego — Kit de robótica</option>
+                  <option value="SUEÑO-0005">💃 Camila — Clases de danza</option>
+                </>
+              )}
+            </select>
+          </div>
+        )}
 
         {/* Montos preestablecidos */}
         <div>
@@ -420,11 +447,16 @@ function Step3Payment({ step1, step2, onBack }: Step3Props) {
           currency, // CLP para webpay/flow, USD para paypal
         }),
       });
-      const data = await response.json();
-      if (data.success && data.data?.redirectUrl) {
+      const data = await response.json().catch(() => null);
+      if (response.ok && data?.success && data?.data?.redirectUrl) {
         window.location.href = data.data.redirectUrl;
       } else {
-        setError(data.error?.message ?? "Error al iniciar el pago. Intenta de nuevo.");
+        const errorMsg =
+          data?.error?.message ??
+          (typeof data?.error === "string" ? data.error : null) ??
+          data?.message ??
+          "Error al iniciar el pago. Intenta de nuevo.";
+        setError(errorMsg);
         setLoading(false);
       }
     } catch {
