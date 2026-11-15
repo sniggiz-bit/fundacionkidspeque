@@ -25,8 +25,9 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 function fCLP(n: number | bigint) {
   return new Intl.NumberFormat("es-CL", {
-    style: "currency", currency: "CLP", maximumFractionDigits: 0,
-    notation: "compact",
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
   }).format(Number(n));
 }
 
