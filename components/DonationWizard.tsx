@@ -105,25 +105,39 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 interface Step1Props {
   onNext: (data: Step1Data) => void;
   defaultValues?: Partial<Step1Data>;
+  initialDreams?: Array<{ publicId: string; title: string; childName: string }>;
 }
 
-function Step1Amount({ onNext, defaultValues }: Step1Props) {
+function Step1Amount({ onNext, defaultValues, initialDreams }: Step1Props) {
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
-  const [availableDreams, setAvailableDreams] = useState<Array<{ publicId: string; title: string; childName: string }>>([]);
+  const [availableDreams, setAvailableDreams] = useState<Array<{ publicId: string; title: string; childName: string }>>(
+    initialDreams && initialDreams.length > 0 ? initialDreams : []
+  );
+  const [loadingDreams, setLoadingDreams] = useState(!initialDreams || initialDreams.length === 0);
 
   const { handleSubmit, setValue, watch, formState: { errors } } = useForm<Step1Data>({
     resolver: zodResolver(step1Schema),
     defaultValues: {
-      dreamId:      defaultValues?.dreamId ?? "SUEÑO-0001",
+      dreamId:      defaultValues?.dreamId ?? initialDreams?.[0]?.publicId ?? "",
       amount:       defaultValues?.amount,
       isRecurring:  defaultValues?.isRecurring ?? false,
     },
   });
 
   useEffect(() => {
+    if (initialDreams && initialDreams.length > 0) {
+      setAvailableDreams(initialDreams);
+      setLoadingDreams(false);
+      if (!defaultValues?.dreamId && initialDreams[0]?.publicId) {
+        setValue("dreamId", initialDreams[0].publicId);
+      }
+      return;
+    }
+
     if (!defaultValues?.dreamId) {
-      fetch("/api/dreams?status=active&limit=10")
+      setLoadingDreams(true);
+      fetch("/api/dreams?status=active&limit=30")
         .then((res) => res.json())
         .then((json) => {
           if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -131,9 +145,10 @@ function Step1Amount({ onNext, defaultValues }: Step1Props) {
             setValue("dreamId", json.data[0].publicId);
           }
         })
-        .catch(() => {});
+        .catch((err) => console.error("[DonationWizard] Error cargando sueños:", err))
+        .finally(() => setLoadingDreams(false));
     }
-  }, [defaultValues?.dreamId, setValue]);
+  }, [defaultValues?.dreamId, initialDreams, setValue]);
 
   const currentAmount = watch("amount");
 
@@ -174,13 +189,10 @@ function Step1Amount({ onNext, defaultValues }: Step1Props) {
                     ✨ {d.childName} — {d.title}
                   </option>
                 ))
+              ) : loadingDreams ? (
+                <option value="">Cargando sueños disponibles...</option>
               ) : (
-                <>
-                  <option value="SUEÑO-0001">🎨 Valentina — El sueño de pintar</option>
-                  <option value="SUEÑO-0003">🎵 Isidora — Clases de música</option>
-                  <option value="SUEÑO-0004">🤖 Diego — Kit de robótica</option>
-                  <option value="SUEÑO-0005">💃 Camila — Clases de danza</option>
-                </>
+                <option value="">No hay sueños activos disponibles</option>
               )}
             </select>
           </div>
@@ -562,9 +574,10 @@ function Step3Payment({ step1, step2, onBack }: Step3Props) {
 interface DonationWizardProps {
   dreamId?: string;
   className?: string;
+  initialDreams?: Array<{ publicId: string; title: string; childName: string }>;
 }
 
-export function DonationWizard({ dreamId, className = "" }: DonationWizardProps) {
+export function DonationWizard({ dreamId, className = "", initialDreams }: DonationWizardProps) {
   const [step,  setStep]  = useState<1 | 2 | 3>(1);
   const [step1, setStep1] = useState<Step1Data | null>(null);
   const [step2, setStep2] = useState<Step2Data | null>(null);
@@ -611,6 +624,7 @@ export function DonationWizard({ dreamId, className = "" }: DonationWizardProps)
             <Step1Amount
               onNext={handleStep1}
               defaultValues={{ dreamId }}
+              initialDreams={initialDreams}
             />
           )}
           {step === 2 && (

@@ -11,6 +11,7 @@ import { z }        from "zod";
 import { db }       from "@/lib/db";
 import { cookies }  from "next/headers";
 import { jwtVerify } from "jose";
+import { syncDonationStats } from "@/lib/stats";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.ADMIN_JWT_SECRET ?? "fallback-dev-secret-change-in-production"
@@ -56,6 +57,9 @@ export async function PATCH(
         dream: { select: { title: true } },
       },
     });
+
+    // Sincronizar estadísticas del sueño y donante en tiempo real
+    await syncDonationStats(params.id);
 
     console.log(`[admin/donations PATCH] Status cambiado a '${parsed.data.status}':`, params.id);
 

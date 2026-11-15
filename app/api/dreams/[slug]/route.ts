@@ -31,19 +31,30 @@ export async function GET(
       },
     });
 
-    if (!dream || !dream.publishedAt) {
+    if (!dream || (dream.status === "draft" && !dream.publishedAt)) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Sueño no encontrado" } },
         { status: 404 }
       );
     }
 
+    const formattedDream = {
+      ...dream,
+      targetAmount: Number(dream.targetAmount),
+      raisedAmount: Number(dream.raisedAmount),
+      progressPercentage: dream.progressPct,
+      donations: dream.donations.map((d) => ({
+        ...d,
+        amountInCLP: Number(d.amountInCLP),
+      })),
+    };
+
     return NextResponse.json(
-      { success: true, data: dream },
+      { success: true, data: formattedDream },
       {
         status: 200,
         headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+          "Cache-Control": "public, s-maxage=10, stale-while-revalidate=60",
         },
       }
     );

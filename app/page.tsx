@@ -7,6 +7,8 @@ import { DonationWizard } from "@/components/DonationWizard";
 import { StoreSection }   from "@/components/StoreSection";
 import { Footer }         from "@/components/Footer";
 
+export const dynamic = 'force-dynamic';
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.kidspeque.cl";
 
 export const metadata: Metadata = {
@@ -70,6 +72,14 @@ export default async function HomePage() {
     raisedAmount: Number(d.raisedAmount),
     progressPercentage: d.progressPct
   }));
+
+  const activeDreamsForWizard = formattedDreams
+    .filter(d => d.status === "active")
+    .map(d => ({
+      publicId:  d.publicId,
+      title:     d.title,
+      childName: d.childName,
+    }));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -217,7 +227,7 @@ export default async function HomePage() {
               </div>
 
               {/* Wizard de donación */}
-              <DonationWizard />
+              <DonationWizard initialDreams={activeDreamsForWizard} />
             </div>
           </div>
         </section>

@@ -20,6 +20,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { db }  from "@/lib/db";
 import { commitWebpayTransaction, isWebpayApproved } from "@/lib/gateways/transbank";
+import { syncDonationStats } from "@/lib/stats";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
 
@@ -79,8 +80,8 @@ async function handleWebpayReturn(
         },
       });
 
-      // El trigger de PostgreSQL actualiza raised_amount del sueño automáticamente.
-      // En producción: enviar email de recibo aquí.
+      // Sincronizar estadísticas del sueño y donante en tiempo real
+      await syncDonationStats(donation.id);
 
       return NextResponse.redirect(`${APP_URL}/donacion/confirmacion?id=${donation.id}`);
     } else {

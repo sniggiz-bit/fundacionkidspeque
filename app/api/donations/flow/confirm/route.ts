@@ -20,6 +20,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getFlowPaymentStatus, isFlowApproved } from "@/lib/gateways/flow";
+import { syncDonationStats } from "@/lib/stats";
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,7 +83,9 @@ export async function POST(request: NextRequest) {
           webhookPayload:    flowStatus as object,
         },
       });
-      console.log("[flow/confirm] ✅ Donación confirmada:", donation.id);
+      // Sincronizar estadísticas del sueño y donante en tiempo real
+      await syncDonationStats(donation.id);
+      console.log("[flow/confirm] ✅ Donación confirmada y sincronizada:", donation.id);
     } else {
       // ❌ Rechazado (status=3) o anulado (status=4)
       const failedStatus = flowStatus.status === 4 ? "refunded" : "failed";

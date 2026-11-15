@@ -44,9 +44,8 @@ export async function GET(request: NextRequest) {
     const limit    = Math.min(50, Number(searchParams.get("limit") ?? 12));
 
     // Filtros dinámicos
-    const where = {
+    const where: any = {
       status,
-      publishedAt: { not: null },
       ...(category ? { category } : {}),
     };
 
@@ -56,15 +55,23 @@ export async function GET(request: NextRequest) {
       db.dream.findMany({
         where,
         select:  dreamCardSelect,
-        orderBy: { publishedAt: "desc" },
+        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
         ...paginate({ page, limit }),
       }),
     ]);
 
+    // Mapear BigInt a Number para serialización JSON segura
+    const formattedDreams = dreams.map((d) => ({
+      ...d,
+      targetAmount: Number(d.targetAmount),
+      raisedAmount: Number(d.raisedAmount),
+      progressPercentage: d.progressPct,
+    }));
+
     return NextResponse.json(
       {
         success: true,
-        data: dreams,
+        data: formattedDreams,
         meta: {
           total,
           page,
@@ -75,8 +82,7 @@ export async function GET(request: NextRequest) {
       {
         status: 200,
         headers: {
-          // ISR: revalidar cada 60 segundos en el CDN
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": "public, s-maxage=10, stale-while-revalidate=60",
         },
       }
     );

@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { db }  from "@/lib/db";
 import { capturePayPalOrder, isPayPalCaptureCompleted } from "@/lib/gateways/paypal";
+import { syncDonationStats } from "@/lib/stats";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
 
@@ -59,6 +60,9 @@ export async function GET(request: NextRequest) {
           webhookPayload:      result as object,
         },
       });
+
+      // Sincronizar estadísticas del sueño y donante en tiempo real
+      await syncDonationStats(donationId);
 
       return NextResponse.redirect(`${APP_URL}/donacion/confirmacion?id=${donationId}`);
     } else {

@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/lib/db";
+import { syncDonationStats } from "@/lib/stats";
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -91,13 +92,15 @@ async function processConfirmedDonation(event: WebhookEvent): Promise<void> {
     },
   });
 
-  console.log("[webhook] ✅ Donación confirmada en DB:", {
+  // Sincronizar estadísticas del sueño y donante en tiempo real
+  await syncDonationStats(donation.id);
+
+  console.log("[webhook] ✅ Donación confirmada en DB y sincronizada:", {
     id:            donation.id,
     transactionId: event.transactionId,
     amount:        event.amount,
     currency:      event.currency,
   });
-  // El trigger de PostgreSQL `trg_update_dream_stats` recalcula raised_amount automáticamente
 }
 
 async function processRefund(event: WebhookEvent): Promise<void> {

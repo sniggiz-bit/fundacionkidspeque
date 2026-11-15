@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/gateways/flow";
 import { db } from "@/lib/db";
+import { syncDonationStats } from "@/lib/stats";
 
 async function handleReturn(token: string | null) {
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001").replace(/\/$/, "");
@@ -30,8 +31,23 @@ async function handleReturn(token: string | null) {
           { gatewayTransactionId: token },
         ],
       },
-      select: { id: true },
+      select: { id: true, status: true },
     });
+
+    if (donation && donation.status === "pending" && flowStatus.status === 2) {
+      await db.donation.update({
+        where: { id: donation.id },
+        data: {
+          status:            "confirmed",
+          paymentMethod:     flowStatus.paymentData?.media ?? "Flow",
+          installments:      1,
+          gatewayOrderId:    String(flowStatus.flowOrder),
+          webhookReceivedAt: new Date(),
+          webhookPayload:    flowStatus as object,
+        },
+      });
+      await syncDonationStats(donation.id);
+    }
 
     const targetId = donation?.id;
     return NextResponse.redirect(
