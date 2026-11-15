@@ -17,6 +17,7 @@ import {
   Heart, Star, Users, ShoppingBag, TrendingUp,
   ArrowUpRight, Plus, AlertCircle,
 } from "lucide-react";
+import { RefreshStatsButton } from "@/components/admin/RefreshStatsButton";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -149,12 +150,15 @@ export default async function AdminDashboard() {
             {new Intl.DateTimeFormat("es-CL", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date())}
           </p>
         </div>
-        <Link
-          href="/admin/suenos/nuevo"
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Plus size={16} aria-hidden /> Nuevo Sueño
-        </Link>
+        <div className="flex items-center gap-3">
+          <RefreshStatsButton />
+          <Link
+            href="/admin/suenos/nuevo"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Plus size={16} aria-hidden /> Nuevo Sueño
+          </Link>
+        </div>
       </div>
 
       {/* Métricas */}

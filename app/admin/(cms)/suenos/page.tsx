@@ -7,6 +7,7 @@ import Link              from "next/link";
 import { db }            from "@/lib/db";
 import { DreamStatusBadge } from "@/components/admin/DreamStatusBadge";
 import { Plus, Pencil, Eye } from "lucide-react";
+import { RefreshStatsButton } from "@/components/admin/RefreshStatsButton";
 
 export const metadata: Metadata = { title: "Sueños" };
 export const dynamic = 'force-dynamic';
@@ -61,12 +62,15 @@ export default async function AdminSuenosPage({
           <h1 className="font-display font-bold text-2xl text-white">Sueños</h1>
           <p className="text-neutral-500 text-sm mt-0.5">{total} campañas en total</p>
         </div>
-        <Link
-          href="/admin/suenos/nuevo"
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Plus size={16} /> Nuevo sueño
-        </Link>
+        <div className="flex items-center gap-3">
+          <RefreshStatsButton />
+          <Link
+            href="/admin/suenos/nuevo"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Plus size={16} /> Nuevo sueño
+          </Link>
+        </div>
       </div>
 
       {/* Tabs de estado */}

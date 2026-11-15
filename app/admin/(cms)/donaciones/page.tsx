@@ -7,6 +7,7 @@ import Link              from "next/link";
 import { db }            from "@/lib/db";
 import { Download }      from "lucide-react";
 import { DonationActions } from "@/components/admin/DonationActions";
+import { RefreshStatsButton } from "@/components/admin/RefreshStatsButton";
 
 export const metadata: Metadata = { title: "Donaciones" };
 export const dynamic = 'force-dynamic';
@@ -84,12 +85,15 @@ export default async function AdminDonacionesPage({
           <h1 className="font-display font-bold text-2xl text-white">Donaciones</h1>
           <p className="text-neutral-500 text-sm mt-0.5">{total} registros</p>
         </div>
-        <a
-          href="/api/admin/donations/export"
-          className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Download size={15} /> Exportar CSV
-        </a>
+        <div className="flex items-center gap-3">
+          <RefreshStatsButton />
+          <a
+            href="/api/admin/donations/export"
+            className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Download size={15} /> Exportar CSV
+          </a>
+        </div>
       </div>
 
       {/* Resumen rápido */}

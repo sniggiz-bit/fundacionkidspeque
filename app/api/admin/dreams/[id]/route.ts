@@ -55,7 +55,14 @@ export async function GET(
   const dream = await db.dream.findUnique({ where: { id: params.id } });
   if (!dream) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ success: true, data: dream });
+  const formatted = {
+    ...dream,
+    targetAmount: Number(dream.targetAmount),
+    raisedAmount: Number(dream.raisedAmount),
+    progressPct:  Number(dream.progressPct),
+  };
+
+  return NextResponse.json({ success: true, data: formatted });
 }
 
 // ── PUT ──────────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { db }  from "@/lib/db";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { randomBytes } from "crypto";
+import { revalidatePath } from "next/cache";
 
 /** Genera un publicId corto estilo "DRM-XXXX" */
 function generatePublicId(): string {
@@ -38,20 +39,20 @@ async function verifyAdmin(): Promise<boolean> {
 }
 
 const dreamCreateSchema = z.object({
-  title:            z.string().min(10).max(200),
-  childName:        z.string().min(2).max(100),
+  title:            z.string().min(5, "Título muy corto").max(200),
+  childName:        z.string().min(2, "Nombre muy corto").max(100),
   childAge:         z.number().int().min(0).max(17),
-  shortDescription: z.string().min(20).max(160),
-  story:            z.string().min(100),
-  targetAmount:     z.number().int().min(10000),
-  category:         z.string().min(1),
-  tags:             z.array(z.string()),
-  deadline:         z.string().optional(),
-  coverImageUrl:    z.string().url(),
-  coverImageAlt:    z.string().min(5),
-  slug:             z.string().min(5).max(250).regex(/^[a-z0-9-]+$/),
-  metaTitle:        z.string().max(60).optional(),
-  metaDescription:  z.string().max(160).optional(),
+  shortDescription: z.string().min(10, "Descripción muy corta").max(160),
+  story:            z.string().min(20, "Historia muy corta"),
+  targetAmount:     z.number().int().min(1000, "Monto mínimo: $1.000"),
+  category:         z.string().min(1, "Categoría requerida"),
+  tags:             z.array(z.string()).default([]),
+  deadline:         z.string().optional().nullable(),
+  coverImageUrl:    z.string().url("URL de imagen inválida"),
+  coverImageAlt:    z.string().optional().nullable(),
+  slug:             z.string().min(3, "Slug muy corto").max(250).regex(/^[a-z0-9-]+$/, "Slug inválido"),
+  metaTitle:        z.string().max(60).optional().nullable(),
+  metaDescription:  z.string().max(160).optional().nullable(),
   status:           z.enum(["draft", "active", "paused"]),
 });
 
@@ -70,18 +71,26 @@ export async function POST(request: NextRequest) {
   }
 
   const { coverImageUrl, coverImageAlt, deadline, ...data } = parsed.data;
+  const validDeadline = deadline && !isNaN(Date.parse(deadline)) ? new Date(deadline) : undefined;
+  const safeAlt = (coverImageAlt && coverImageAlt.trim()) ? coverImageAlt.trim() : data.title;
 
   try {
     const dream = await db.dream.create({
       data: {
         ...data,
         publicId:    generatePublicId(),
-        coverImage:  { url: coverImageUrl, alt: coverImageAlt, width: 1200, height: 630 },
-        deadline:    deadline ? new Date(deadline) : undefined,
+        coverImage:  { url: coverImageUrl, alt: safeAlt, width: 1200, height: 630 },
+        deadline:    validDeadline,
         publishedAt: data.status === "active" ? new Date() : undefined,
       },
       select: { id: true, publicId: true, slug: true },
     });
+
+    // Revalidar cachés de rutas
+    revalidatePath("/", "layout");
+    revalidatePath("/suenos", "page");
+    revalidatePath("/admin/suenos", "page");
+    revalidatePath("/admin", "page");
 
     return NextResponse.json(
       { success: true, data: dream },
@@ -113,6 +122,13 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ success: true, data: dreams });
+  const formattedDreams = dreams.map(d => ({
+    ...d,
+    raisedAmount: Number(d.raisedAmount),
+    targetAmount: Number(d.targetAmount),
+    progressPct: Number(d.progressPct),
+  }));
+
+  return NextResponse.json({ success: true, data: formattedDreams });
 }
 

@@ -7,30 +7,30 @@
 
 "use client";
 
-import { useState, useRef }    from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter }   from "next/navigation";
-import { useForm }     from "react-hook-form";
+import { useForm, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z }           from "zod";
-import { Loader2, Save, AlertCircle, UploadCloud, X } from "lucide-react";
+import { Loader2, Save, AlertCircle, UploadCloud, X, Link as LinkIcon, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 const dreamSchema = z.object({
-  title:            z.string().min(10, "Título muy corto").max(200),
-  childName:        z.string().min(2).max(100),
+  title:            z.string().min(5, "Título muy corto (mín. 5 caracteres)").max(200),
+  childName:        z.string().min(2, "Nombre muy corto").max(100),
   childAge:         z.number().int().min(0).max(17),
-  shortDescription: z.string().min(20, "Descripción muy corta").max(160),
-  story:            z.string().min(100, "La historia es muy corta").max(10000),
-  targetAmount:     z.number().int().min(10000, "Meta mínima: $10.000 CLP"),
+  shortDescription: z.string().min(10, "Descripción muy corta (mín. 10 caracteres)").max(160),
+  story:            z.string().min(20, "La historia debe tener al menos 20 caracteres").max(10000),
+  targetAmount:     z.number().int().min(1000, "Meta mínima: $1.000 CLP"),
   category:         z.string().min(1, "Selecciona una categoría"),
-  tags:             z.string(), // Separados por coma
+  tags:             z.string().optional().default(""), // Separados por coma
   deadline:         z.string().optional(),
-  coverImageUrl:    z.string().url("URL de imagen inválida"),
-  coverImageAlt:    z.string().min(5, "Describe la imagen para accesibilidad"),
-  slug:             z.string().min(5).max(250)
-                     .regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
+  coverImageUrl:    z.string().url("Debes subir una imagen o ingresar una URL válida (ej: https://...)"),
+  coverImageAlt:    z.string().optional().default(""),
+  slug:             z.string().min(3, "Slug requerido (mín. 3 caracteres)").max(250)
+                     .regex(/^[a-z0-9-]+$/, "El slug solo puede contener minúsculas, números y guiones"),
   metaTitle:        z.string().max(60).optional(),
   metaDescription:  z.string().max(160).optional(),
   status:           z.enum(["draft", "active", "paused"]),
@@ -60,6 +60,7 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
   const [activeTab, setActiveTab] = useState<"content" | "media" | "seo">("content");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [useDirectUrl, setUseDirectUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isDirty } } = useForm<DreamFormData>({
@@ -68,12 +69,30 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
       status: "draft",
       childAge: 8,
       targetAmount: 150000,
+      tags: "",
+      coverImageAlt: "",
       ...defaults,
     },
   });
 
-  const titleValue = watch("title");
-  const coverUrl = watch("coverImageUrl");
+  const titleValue    = watch("title");
+  const childNameValue = watch("childName");
+  const coverUrl      = watch("coverImageUrl");
+  const slugValue     = watch("slug");
+
+  // Auto-generar slug si está vacío al escribir el título
+  useEffect(() => {
+    if (mode === "create" && titleValue && (!slugValue || slugValue.length === 0)) {
+      const slug = titleValue
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .slice(0, 150);
+      setValue("slug", slug, { shouldValidate: true });
+    }
+  }, [titleValue, slugValue, mode, setValue]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,24 +110,23 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
       const json = await res.json();
       
       if (!res.ok) {
-        setUploadError(json.error ?? "Error al subir la imagen");
+        setUploadError(json.error ?? "Error al subir la imagen. Puedes pegar una URL directa abajo.");
       } else {
         setValue("coverImageUrl", json.data.url, { shouldValidate: true, shouldDirty: true });
       }
-    } catch (err) {
-      setUploadError("Error de conexión al subir la imagen.");
+    } catch {
+      setUploadError("Error de conexión al subir la imagen. Puedes ingresar una URL directa.");
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Auto-generar slug desde el título
   const generateSlug = () => {
     if (!titleValue) return;
     const slug = titleValue
       .toLowerCase()
-      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9\s-]/g, "")
       .trim()
       .replace(/\s+/g, "-")
@@ -119,7 +137,8 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
   const onSubmit = async (data: DreamFormData) => {
     setSaving(true);
     setSaveError(null);
-    const tags = data.tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const tags = data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
+    const coverImageAlt = data.coverImageAlt?.trim() || `Foto de ${data.childName || data.title}`;
 
     try {
       const endpoint = mode === "create" ? "/api/admin/dreams" : `/api/admin/dreams/${dreamId}`;
@@ -128,7 +147,7 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
       const res  = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ ...data, tags }),
+        body:    JSON.stringify({ ...data, tags, coverImageAlt }),
       });
       const json = await res.json();
 
@@ -147,14 +166,40 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
     }
   };
 
+  const onInvalid = (formErrors: FieldErrors<DreamFormData>) => {
+    // Redirigir al tab que tiene el primer error
+    if (
+      formErrors.title || formErrors.childName || formErrors.childAge ||
+      formErrors.shortDescription || formErrors.story || formErrors.targetAmount ||
+      formErrors.category
+    ) {
+      setActiveTab("content");
+    } else if (formErrors.coverImageUrl || formErrors.coverImageAlt) {
+      setActiveTab("media");
+    } else if (formErrors.slug || formErrors.metaTitle || formErrors.metaDescription) {
+      setActiveTab("seo");
+    }
+
+    setSaveError("Por favor revisa los campos requeridos marcados en rojo en el formulario.");
+  };
+
+  // Detectar errores por pestaña
+  const hasContentErrors = Boolean(
+    errors.title || errors.childName || errors.childAge ||
+    errors.shortDescription || errors.story || errors.targetAmount ||
+    errors.category
+  );
+  const hasMediaErrors = Boolean(errors.coverImageUrl || errors.coverImageAlt);
+  const hasSeoErrors   = Boolean(errors.slug || errors.metaTitle || errors.metaDescription);
+
   const TABS = [
-    { id: "content", label: "Contenido"   },
-    { id: "media",   label: "Medios"      },
-    { id: "seo",     label: "SEO & Slug"  },
+    { id: "content", label: "Contenido",  hasError: hasContentErrors },
+    { id: "media",   label: "Medios",     hasError: hasMediaErrors },
+    { id: "seo",     label: "SEO & Slug", hasError: hasSeoErrors },
   ] as const;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="space-y-6">
 
       {/* Tabs */}
       <div className="flex gap-1 bg-neutral-900 rounded-xl p-1 border border-neutral-800 w-fit">
@@ -163,31 +208,36 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.id
-                ? "bg-neutral-800 text-white"
+                ? "bg-neutral-800 text-white shadow-sm"
                 : "text-neutral-500 hover:text-neutral-300"
             }`}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            {tab.hasError && (
+              <span className="w-2 h-2 rounded-full bg-red-500" title="Hay errores en esta pestaña" />
+            )}
           </button>
         ))}
       </div>
 
       {/* ── TAB: Contenido ─────────────────────────────────────── */}
-      {activeTab === "content" && (
+      <div className={activeTab === "content" ? "space-y-5" : "hidden"}>
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-5">
 
           {/* Estado */}
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">Estado *</label>
-            <div className="flex gap-2">
-              {["draft", "active", "paused"].map((s) => (
-                <label key={s} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" value={s} {...register("status")} className="accent-primary-500" />
-                  <span className="text-sm text-neutral-300 capitalize">{
-                    s === "draft" ? "Borrador" : s === "active" ? "Publicar ahora" : "Pausado"
-                  }</span>
+            <div className="flex gap-4">
+              {[
+                { value: "draft",  label: "Borrador (oculto)" },
+                { value: "active", label: "Publicar ahora (activo)" },
+                { value: "paused", label: "Pausado" },
+              ].map((s) => (
+                <label key={s.value} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value={s.value} {...register("status")} className="accent-primary-500" />
+                  <span className="text-sm text-neutral-300">{s.label}</span>
                 </label>
               ))}
             </div>
@@ -196,61 +246,87 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
           {/* Título */}
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">Título del sueño *</label>
-            <input {...register("title")} className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500"
-              placeholder="El sueño de Valentina: Aprender a pintar" />
-            {errors.title && <p className="text-xs text-error mt-1">{errors.title.message}</p>}
+            <input
+              {...register("title")}
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="El sueño de Valentina: Aprender a pintar"
+            />
+            {errors.title && <p className="text-xs text-red-400 mt-1">{errors.title.message}</p>}
           </div>
 
           {/* Nombre del niño y edad */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-400 mb-2">Nombre del niño/a *</label>
-              <input {...register("childName")} className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500"
-                placeholder="Valentina" />
-              {errors.childName && <p className="text-xs text-error mt-1">{errors.childName.message}</p>}
+              <input
+                {...register("childName")}
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Valentina"
+              />
+              {errors.childName && <p className="text-xs text-red-400 mt-1">{errors.childName.message}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-400 mb-2">Edad *</label>
-              <input {...register("childAge", { valueAsNumber: true })} type="number" min={0} max={17}
-                className="input-field bg-neutral-800 border-neutral-700 text-white" placeholder="7" />
-              {errors.childAge && <p className="text-xs text-error mt-1">{errors.childAge.message}</p>}
+              <input
+                {...register("childAge", { valueAsNumber: true })}
+                type="number"
+                min={0}
+                max={17}
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="7"
+              />
+              {errors.childAge && <p className="text-xs text-red-400 mt-1">{errors.childAge.message}</p>}
             </div>
           </div>
 
           {/* Descripción corta */}
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">
-              Descripción corta * <span className="font-normal text-neutral-600">(máx 160 chars — para cards y SEO)</span>
+              Descripción corta * <span className="font-normal text-neutral-600">(máx 160 caracteres — para tarjetas y resumen)</span>
             </label>
-            <textarea {...register("shortDescription")} rows={2} maxLength={160}
-              className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500 resize-none"
-              placeholder="Valentina sueña con aprender a pintar y expresar todo lo que lleva en su corazón." />
-            {errors.shortDescription && <p className="text-xs text-error mt-1">{errors.shortDescription.message}</p>}
+            <textarea
+              {...register("shortDescription")}
+              rows={2}
+              maxLength={160}
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Valentina sueña con aprender a pintar y expresar todo lo que lleva en su corazón."
+            />
+            {errors.shortDescription && <p className="text-xs text-red-400 mt-1">{errors.shortDescription.message}</p>}
           </div>
 
           {/* Historia */}
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">
-              Historia completa * <span className="font-normal text-neutral-600">(HTML o Markdown)</span>
+              Historia completa * <span className="font-normal text-neutral-600">(mínimo 20 caracteres)</span>
             </label>
-            <textarea {...register("story")} rows={10}
-              className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500 resize-y font-mono text-xs"
-              placeholder="<p>Valentina tiene 7 años y…</p>" />
-            {errors.story && <p className="text-xs text-error mt-1">{errors.story.message}</p>}
+            <textarea
+              {...register("story")}
+              rows={6}
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Describe detalladamente el sueño del niño o niña, su contexto y cómo esta campaña impactará positivamente su vida..."
+            />
+            {errors.story && <p className="text-xs text-red-400 mt-1">{errors.story.message}</p>}
           </div>
 
           {/* Financiero */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-2">Meta (CLP) *</label>
-              <input {...register("targetAmount", { valueAsNumber: true })} type="number"
-                className="input-field bg-neutral-800 border-neutral-700 text-white" placeholder="150000" />
-              {errors.targetAmount && <p className="text-xs text-error mt-1">{errors.targetAmount.message}</p>}
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Meta de recaudación (CLP) *</label>
+              <input
+                {...register("targetAmount", { valueAsNumber: true })}
+                type="number"
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="150000"
+              />
+              {errors.targetAmount && <p className="text-xs text-red-400 mt-1">{errors.targetAmount.message}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-2">Fecha límite</label>
-              <input {...register("deadline")} type="date"
-                className="input-field bg-neutral-800 border-neutral-700 text-white" />
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Fecha límite (opcional)</label>
+              <input
+                {...register("deadline")}
+                type="date"
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
             </div>
           </div>
 
@@ -258,30 +334,42 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-400 mb-2">Categoría *</label>
-              <select {...register("category")} className="input-field bg-neutral-800 border-neutral-700 text-white">
+              <select
+                {...register("category")}
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 capitalize"
+              >
                 <option value="">Seleccionar…</option>
                 {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
               </select>
-              {errors.category && <p className="text-xs text-error mt-1">{errors.category.message}</p>}
+              {errors.category && <p className="text-xs text-red-400 mt-1">{errors.category.message}</p>}
             </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-400 mb-2">Tags <span className="font-normal text-neutral-600">(separados por coma)</span></label>
-              <input {...register("tags")} className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500"
-                placeholder="pintura, arte, niña" />
+              <input
+                {...register("tags")}
+                className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="pintura, arte, niña"
+              />
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── TAB: Medios ────────────────────────────────────────── */}
-      {activeTab === "media" && (
+      <div className={activeTab === "media" ? "space-y-5" : "hidden"}>
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 mb-2">Imagen de portada *</label>
-            
-            {/* Input oculto real de Cloudinary/Supabase */}
-            <input type="hidden" {...register("coverImageUrl")} />
-            
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-neutral-400">Imagen de portada *</label>
+              <button
+                type="button"
+                onClick={() => setUseDirectUrl(!useDirectUrl)}
+                className="text-xs text-primary-400 hover:text-primary-300 underline"
+              >
+                {useDirectUrl ? "← Subir archivo local" : "O ingresar URL directa →"}
+              </button>
+            </div>
+
             {/* Input de archivo oculto */}
             <input
               type="file"
@@ -291,14 +379,39 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
               onChange={handleFileUpload}
             />
 
-            {coverUrl ? (
+            {useDirectUrl ? (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="url"
+                      {...register("coverImageUrl")}
+                      placeholder="https://ejemplo.com/imagen.jpg"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <LinkIcon size={15} className="absolute left-3 top-3 text-neutral-500" />
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-500">Pega un enlace público directo a una imagen JPG, PNG o WebP.</p>
+              </div>
+            ) : coverUrl ? (
               <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-neutral-700 group bg-black/50">
                 <Image src={coverUrl} alt="Portada" fill className="object-cover" />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full transition-colors"
+                    title="Cambiar imagen"
+                  >
                     <UploadCloud size={20} />
                   </button>
-                  <button type="button" onClick={() => setValue("coverImageUrl", "", { shouldDirty: true, shouldValidate: true })} className="p-3 bg-red-900/80 hover:bg-red-800 text-red-200 rounded-full transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setValue("coverImageUrl", "", { shouldDirty: true, shouldValidate: true })}
+                    className="p-3 bg-red-900/80 hover:bg-red-800 text-red-200 rounded-full transition-colors"
+                    title="Quitar imagen"
+                  >
                     <X size={20} />
                   </button>
                 </div>
@@ -313,7 +426,7 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
                 {uploadingImage ? (
                   <>
                     <Loader2 className="animate-spin text-primary-500" size={32} />
-                    <span className="text-sm font-medium text-neutral-400">Subiendo imagen...</span>
+                    <span className="text-sm font-medium text-neutral-400">Subiendo imagen a Cloudinary...</span>
                   </>
                 ) : (
                   <>
@@ -322,58 +435,85 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
                     </div>
                     <div className="text-center">
                       <span className="text-sm font-semibold text-neutral-300 block">Click para subir una imagen</span>
-                      <span className="text-xs text-neutral-500 mt-1 block">JPG, PNG, WebP (Máx 5MB)</span>
+                      <span className="text-xs text-neutral-500 mt-1 block">JPG, PNG, WebP (Máx 10MB)</span>
                     </div>
                   </>
                 )}
               </button>
             )}
 
-            {errors.coverImageUrl && <p className="text-xs text-error mt-2">{errors.coverImageUrl.message}</p>}
-            {uploadError && <p className="text-xs text-error mt-2">{uploadError}</p>}
-            <p className="text-xs text-neutral-600 mt-2">Tamaño recomendado: 1200×630px (ratio 16:9)</p>
+            {/* Vista previa en modo URL directa */}
+            {useDirectUrl && coverUrl && (
+              <div className="mt-3 relative w-full h-40 rounded-xl overflow-hidden border border-neutral-700 bg-black/40">
+                <Image src={coverUrl} alt="Vista previa" fill className="object-cover" />
+              </div>
+            )}
+
+            {errors.coverImageUrl && <p className="text-xs text-red-400 mt-2">{errors.coverImageUrl.message}</p>}
+            {uploadError && <p className="text-xs text-red-400 mt-2">{uploadError}</p>}
+            <p className="text-xs text-neutral-600 mt-2">Tamaño recomendado: 1200×630px (proporción 16:9)</p>
           </div>
+
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 mb-2">Alt text de la imagen * <span className="font-normal text-neutral-600">(accesibilidad)</span></label>
-            <input {...register("coverImageAlt")} className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500"
-              placeholder="Valentina sonriendo con pinturas de colores" />
-            {errors.coverImageAlt && <p className="text-xs text-error mt-1">{errors.coverImageAlt.message}</p>}
+            <label className="block text-xs font-semibold text-neutral-400 mb-2">
+              Texto descriptivo de la imagen (Alt) <span className="font-normal text-neutral-600">(opcional — para accesibilidad)</span>
+            </label>
+            <input
+              {...register("coverImageAlt")}
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder={`Valentina sonriendo con pinturas`}
+            />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── TAB: SEO ───────────────────────────────────────────── */}
-      {activeTab === "seo" && (
+      {/* ── TAB: SEO & Slug ────────────────────────────────────── */}
+      <div className={activeTab === "seo" ? "space-y-5" : "hidden"}>
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 mb-2">Slug (URL) *</label>
+            <label className="block text-xs font-semibold text-neutral-400 mb-2">Slug (identificador en URL) *</label>
             <div className="flex gap-2">
               <span className="flex items-center px-3 text-xs text-neutral-500 bg-neutral-800 border border-neutral-700 rounded-l-xl border-r-0">
                 /suenos/
               </span>
-              <input {...register("slug")} className="input-field bg-neutral-800 border-neutral-700 text-white flex-1 rounded-l-none"
-                placeholder="sueno-valentina-pintora" />
-              <button type="button" onClick={generateSlug}
-                className="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-300 text-xs rounded-xl transition-colors whitespace-nowrap">
+              <input
+                {...register("slug")}
+                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-r-xl"
+                placeholder="sueno-valentina-pintora"
+              />
+              <button
+                type="button"
+                onClick={generateSlug}
+                className="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-300 text-xs rounded-xl transition-colors whitespace-nowrap"
+              >
                 Auto-generar
               </button>
             </div>
-            {errors.slug && <p className="text-xs text-error mt-1">{errors.slug.message}</p>}
+            {errors.slug && <p className="text-xs text-red-400 mt-1">{errors.slug.message}</p>}
           </div>
+
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">Meta título SEO <span className="font-normal text-neutral-600">(máx 60 chars)</span></label>
-            <input {...register("metaTitle")} maxLength={60}
-              className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500"
-              placeholder="Deja vacío para usar el título del sueño" />
+            <input
+              {...register("metaTitle")}
+              maxLength={60}
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Deja vacío para usar el título del sueño"
+            />
           </div>
+
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">Meta descripción SEO <span className="font-normal text-neutral-600">(máx 160 chars)</span></label>
-            <textarea {...register("metaDescription")} maxLength={160} rows={3}
-              className="input-field bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500 resize-none"
-              placeholder="Deja vacío para usar la descripción corta" />
+            <textarea
+              {...register("metaDescription")}
+              maxLength={160}
+              rows={3}
+              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Deja vacío para usar la descripción corta"
+            />
           </div>
         </div>
-      )}
+      </div>
 
       {/* Error al guardar */}
       {saveError && (
@@ -385,12 +525,18 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
 
       {/* Acciones */}
       <div className="flex items-center gap-3 justify-end pt-2">
-        <button type="button" onClick={() => router.back()}
-          className="px-5 py-2.5 rounded-xl text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="px-5 py-2.5 rounded-xl text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all"
+        >
           Cancelar
         </button>
-        <button type="submit" disabled={saving || !isDirty}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+        <button
+          type="submit"
+          disabled={saving || (mode === "edit" && !isDirty)}
+          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
+        >
           {saving ? (
             <><Loader2 size={15} className="animate-spin" /> Guardando…</>
           ) : (
