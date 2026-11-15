@@ -89,6 +89,13 @@ export async function PUT(
   // Construir el patch dinámicamente
   const patch: Record<string, unknown> = { ...rest };
 
+  if (typeof rest.story === "string" && rest.story.trim() && !/<[a-z][\s\S]*>/i.test(rest.story)) {
+    const paragraphs = rest.story.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    patch.story = paragraphs.length > 0
+      ? paragraphs.map(p => `<p>${p.replace(/\n/g, "<br />")}</p>`).join("\n")
+      : `<p>${rest.story.trim()}</p>`;
+  }
+
   if (coverImageUrl || coverImageAlt) {
     // Obtener imagen actual para fusionarla
     const current = await db.dream.findUnique({ where: { id: params.id }, select: { coverImage: true } });

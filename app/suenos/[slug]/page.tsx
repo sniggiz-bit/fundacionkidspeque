@@ -316,7 +316,15 @@ export default async function DreamPage({ params }: PageProps) {
 
               {/* Historia del sueño */}
               <article className="prose prose-neutral max-w-none prose-p:text-neutral-700 prose-headings:font-display">
-                <div dangerouslySetInnerHTML={{ __html: dream.story }} />
+                {/<[a-z][\s\S]*>/i.test(dream.story) ? (
+                  <div dangerouslySetInnerHTML={{ __html: dream.story }} />
+                ) : (
+                  <div className="space-y-4 text-neutral-700 leading-relaxed whitespace-pre-line">
+                    {dream.story.split(/\n\s*\n/).map((paragraph, i) => (
+                      <p key={i}>{paragraph.trim()}</p>
+                    ))}
+                  </div>
+                )}
               </article>
 
               {/* Tags */}

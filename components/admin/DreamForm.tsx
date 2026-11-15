@@ -38,7 +38,34 @@ const dreamSchema = z.object({
 
 type DreamFormData = z.infer<typeof dreamSchema>;
 
-// ── Constantes ────────────────────────────────────────────────────────────────
+// ── Constantes y Helpers ──────────────────────────────────────────────────────
+
+function htmlToPlainText(html?: string): string {
+  if (!html) return "";
+  if (!/<[a-z][\s\S]*>/i.test(html)) return html;
+  return html
+    .replace(/<\/p>\s*<p>/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<p>/gi, "")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+}
+
+function plainTextToHtml(text?: string): string {
+  if (!text) return "";
+  if (/<p>|<div|<h[1-6]/i.test(text)) {
+    return text.trim();
+  }
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (paragraphs.length === 0) return `<p>${text.trim()}</p>`;
+  return paragraphs
+    .map((p) => `<p>${p.replace(/\n/g, "<br />")}</p>`)
+    .join("\n");
+}
 
 const CATEGORIES = [
   "arte", "educación", "salud", "deporte", "música",
@@ -63,6 +90,8 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
   const [useDirectUrl, setUseDirectUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const initialStory = defaults?.story ? htmlToPlainText(defaults.story) : "";
+
   const { register, handleSubmit, watch, setValue, formState: { errors, isDirty } } = useForm<DreamFormData>({
     resolver: zodResolver(dreamSchema),
     defaultValues: {
@@ -72,6 +101,7 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
       tags: "",
       coverImageAlt: "",
       ...defaults,
+      story: initialStory,
     },
   });
 
@@ -139,6 +169,7 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
     setSaveError(null);
     const tags = data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
     const coverImageAlt = data.coverImageAlt?.trim() || `Foto de ${data.childName || data.title}`;
+    const formattedStory = plainTextToHtml(data.story);
 
     try {
       const endpoint = mode === "create" ? "/api/admin/dreams" : `/api/admin/dreams/${dreamId}`;
@@ -147,7 +178,7 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
       const res  = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ ...data, tags, coverImageAlt }),
+        body:    JSON.stringify({ ...data, story: formattedStory, tags, coverImageAlt }),
       });
       const json = await res.json();
 
@@ -297,13 +328,15 @@ export function DreamForm({ mode, dreamId, defaults }: DreamFormProps) {
           {/* Historia */}
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-2">
-              Historia completa * <span className="font-normal text-neutral-600">(mínimo 20 caracteres)</span>
+              Historia completa * <span className="font-normal text-neutral-500">(texto libre — escribe normalmente y usa Enter para separar párrafos)</span>
             </label>
             <textarea
               {...register("story")}
-              rows={6}
-              className="w-full px-4 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Describe detalladamente el sueño del niño o niña, su contexto y cómo esta campaña impactará positivamente su vida..."
+              rows={8}
+              className="w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder={`Escribe aquí la historia con tus propias palabras...
+
+Puedes usar saltos de línea normales con la tecla Enter para separar párrafos libremente. No necesitas ingresar etiquetas HTML ni códigos.`}
             />
             {errors.story && <p className="text-xs text-red-400 mt-1">{errors.story.message}</p>}
           </div>

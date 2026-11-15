@@ -70,14 +70,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { coverImageUrl, coverImageAlt, deadline, ...data } = parsed.data;
+  const { coverImageUrl, coverImageAlt, deadline, story, ...data } = parsed.data;
   const validDeadline = deadline && !isNaN(Date.parse(deadline)) ? new Date(deadline) : undefined;
   const safeAlt = (coverImageAlt && coverImageAlt.trim()) ? coverImageAlt.trim() : data.title;
+
+  const normalizedStory = (story && !/<[a-z][\s\S]*>/i.test(story))
+    ? story.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${p.replace(/\n/g, "<br />")}</p>`).join("\n")
+    : story;
 
   try {
     const dream = await db.dream.create({
       data: {
         ...data,
+        story:       normalizedStory,
         publicId:    generatePublicId(),
         coverImage:  { url: coverImageUrl, alt: safeAlt, width: 1200, height: 630 },
         deadline:    validDeadline,
